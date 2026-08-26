@@ -8,7 +8,7 @@ export default function HomePage() {
       <section className="flex flex-col items-center text-center my-12 space-y-6">
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-blue-500/10 border border-blue-500/20 text-blue-400 text-xs font-semibold tracking-wide uppercase">
           <Sparkles className="w-3.5 h-3.5" />
-          <span>Phase 1 Architecture Active</span>
+          <span>Next-Gen Portfolio Intelligence</span>
         </div>
 
         <h1 className="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white max-w-4xl leading-[1.1]">
@@ -84,28 +84,6 @@ export default function HomePage() {
             <span>AI Agent Core</span>
             <ArrowRight className="w-3.5 h-3.5" />
           </div>
-        </div>
-      </section>
-
-      {/* System Status Banner */}
-      <section className="p-6 rounded-2xl bg-gradient-to-r from-slate-900 via-slate-900 to-blue-950/50 border border-blue-500/20 flex flex-col sm:flex-row items-center justify-between gap-4 my-6">
-        <div className="flex items-center gap-3">
-          <div className="relative flex h-3 w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-          </div>
-          <div>
-            <h4 className="text-sm font-semibold text-white">System Architecture & Clean Imports</h4>
-            <p className="text-xs text-slate-400">Phase 1 root layout, providers, and component stubs verified.</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <span className="px-3 py-1 rounded-md bg-white/5 border border-white/10 text-xs font-mono text-slate-300">
-            Next.js 15 App Router
-          </span>
-          <span className="px-3 py-1 rounded-md bg-blue-500/10 border border-blue-500/20 text-xs font-mono text-blue-400">
-            FastAPI Backend Ready
-          </span>
         </div>
       </section>
     </div>
