@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import mf_routes, crypto_routes, agent_routes
+from app.api import mf_routes, crypto_routes
 
 app = FastAPI(title="AI Investment Advisor API")
 
@@ -15,8 +15,8 @@ app.add_middleware(
 
 app.include_router(mf_routes.router, prefix="/api/mf", tags=["Mutual Funds"])
 app.include_router(crypto_routes.router, prefix="/api/crypto", tags=["Crypto"])
-app.include_router(agent_routes.router, prefix="/api/agent", tags=["AI Agent"])
 
 @app.get("/")
 def read_root():
     return {"message": "AI Investment Advisor Backend is running!"}
+
