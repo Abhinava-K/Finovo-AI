@@ -13,7 +13,7 @@ const faqs = [
   },
   {
     q: 'How does the AI generate my portfolio — is it just ChatGPT with a prompt?',
-    a: 'No. We use a LangGraph ReAct (Reason + Act) agent running Groq\'s Llama 3.3-70b. The agent uses specialized tools: a mutual fund analyzer tool and a crypto portfolio builder tool. It fetches real data, reasons about your specific profile, and constructs a recommendation — not just fills in a template.',
+    a: 'No. We use a LangGraph ReAct (Reason + Act) agent architecture. The agent uses specialized tools: a mutual fund analyzer tool and a crypto portfolio builder tool. It fetches real data, reasons about your specific profile, and constructs a recommendation — not just fills in a template.',
   },
   {
     q: 'What do the three projection scenarios (Optimistic / Expected / Conservative) mean?',

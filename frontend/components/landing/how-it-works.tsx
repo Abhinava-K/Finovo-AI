@@ -23,7 +23,7 @@ const steps = [
     title: 'AI Fetches Live Data',
     description:
       'Our LangGraph ReAct agent queries MFAPI for real-time NAV data and CoinGecko for live crypto prices. No cached templates — every recommendation is freshly computed against current markets.',
-    highlights: ['Live NAV from MFAPI', 'Real-time crypto via CoinGecko', 'Groq Llama 3.3-70b reasoning'],
+    highlights: ['Live NAV from MFAPI', 'Real-time crypto via CoinGecko', 'Multi-asset AI reasoning'],
     color: 'violet' as const,
     dotColor: 'bg-violet-400',
     lineColor: 'from-violet-400/30',
