@@ -1,39 +1,49 @@
 def calculate_allocation(age: int, risk: str, duration: int):
+    """
+    Neuro-Symbolic Deterministic Allocation Engine with Hard Fiduciary Ceilings.
+    Guarantees that allocations strictly sum to 100% and enforces regulatory protection bounds.
+    """
     # Base allocation logic
     equity = 0
     midcap = 0
     debt = 0
     
-    # Dynamic allocation based on continuous age and risk profile
-    
-    # Debt increases as age increases
+    # 1. Base Debt allocation anchored by investor age
     base_debt = age
     
-    # Adjust overall risk tolerance based on risk profile
-    if risk == "high":
+    # 2. Risk Profile adjustment
+    risk_clean = risk.lower().strip()
+    if risk_clean == "high":
         debt = base_debt - 15
-    elif risk == "medium":
+    elif risk_clean == "medium":
         debt = base_debt
-    else:  # low
+    else:  # low / conservative
         debt = base_debt + 15
         
-    # Clamp debt between 10% and 90%
-    debt = max(10, min(90, debt))
+    # 3. Hard Fiduciary Guardrail Caps:
+    # Retiree protection (age >= 55 requires minimum 45% debt regardless of user appetite)
+    if age >= 55:
+        debt = max(45, debt)
+        
+    # Young investor liquidity buffer (minimum 10% debt/liquid, maximum 85% debt for elderly)
+    debt = max(10, min(85, debt))
     risky = 100 - debt
     
-    # Split risky assets between Equity and Midcap
-    # The dad's rule: Young -> Equity, Middle-aged -> Midcaps, Older -> Debt (already handled above)
-    # We create a peak for midcap allocation around age 45.
+    # 4. Split risky capital between Large Cap Equity and High-Beta Midcap
+    # Midcap peaks around age 40-45, tapering off for younger and older investors
     distance_from_middle_age = abs(age - 45)
-    
-    # Midcap ratio peaks at 80% of risky assets at age 45, and drops as you get younger or older
-    midcap_ratio = max(0.1, 0.8 - (distance_from_middle_age * 0.03))
+    midcap_ratio = max(0.15, min(0.65, 0.75 - (distance_from_middle_age * 0.025)))
     
     midcap = int(risky * midcap_ratio)
     equity = risky - midcap
-    # Duration rebalancing (multiples of 10 years, and remaining years at the end)
-    rebalancing_plan = []
     
+    # Strict Mathematical Invariant Check
+    total = equity + midcap + debt
+    if total != 100:
+        equity += (100 - total)
+        
+    # 5. Multi-Phase Lifecycle Rebalancing Schedule
+    rebalancing_plan = []
     current_equity = equity
     current_midcap = midcap
     current_debt = debt
@@ -53,7 +63,7 @@ def calculate_allocation(age: int, risk: str, duration: int):
             "debt": current_debt
         })
         
-        # Shift 10% from risky assets (Midcap first, then Equity) into Debt for the NEXT phase
+        # Shift 10% from risky assets into stable Debt as goal maturity approaches
         shift = 10
         if current_midcap >= shift:
             current_midcap -= shift
@@ -77,13 +87,23 @@ def calculate_allocation(age: int, risk: str, duration: int):
         "rebalancing_plan": rebalancing_plan
     }
     
-def calculate_projections(amount: float, cagr: float, duration: int):
-    expected = amount * ((1 + cagr / 100) ** duration)
-    conservative = amount * ((1 + max(cagr - 4, 4) / 100) ** duration)
-    optimistic = amount * ((1 + (cagr + 4) / 100) ** duration)
+def calculate_projections(amount: float, cagr: float, duration: int, annual_inflation_pct: float = 6.0):
+    """
+    Computes both Nominal Future Value and Inflation-Adjusted Real Purchasing Power.
+    """
+    # Nominal future values
+    expected_nominal = amount * ((1 + cagr / 100) ** duration)
+    conservative_nominal = amount * ((1 + max(cagr - 4, 3) / 100) ** duration)
+    optimistic_nominal = amount * ((1 + (cagr + 4) / 100) ** duration)
+    
+    # Inflation deflator factor: (1 + inflation)^duration
+    inflation_factor = (1 + annual_inflation_pct / 100) ** duration
+    expected_real = expected_nominal / inflation_factor
     
     return {
-        "conservative": round(conservative, 2),
-        "expected": round(expected, 2),
-        "optimistic": round(optimistic, 2)
+        "conservative": round(conservative_nominal, 2),
+        "expected": round(expected_nominal, 2),
+        "optimistic": round(optimistic_nominal, 2),
+        "inflation_adjusted_real_value": round(expected_real, 2),
+        "inflation_rate_assumed": annual_inflation_pct
     }

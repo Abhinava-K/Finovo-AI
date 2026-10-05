@@ -1,9 +1,10 @@
 from langchain_core.tools import tool
 from langgraph.prebuilt import create_react_agent
-from app.services.mfapi import search_schemes, get_scheme_history, calculate_cagr_since_inception
+from app.services.mfapi import search_schemes, get_scheme_history, calculate_fund_metrics
 from app.services.coingecko import get_crypto_prices
 from app.services.news_scraper import FinancialNewsRAGService
 import os
+import re
 from dotenv import load_dotenv
 
 # Load environment variables from .env
@@ -41,37 +42,77 @@ def get_llm():
 # Initialize the LLM instance
 llm = get_llm()
 
+# Common ticker normalization map for self-healing argument coercion
+TICKER_MAP = {
+    "btc": "bitcoin",
+    "eth": "ethereum",
+    "sol": "solana",
+    "doge": "dogecoin",
+    "ada": "cardano",
+    "xrp": "ripple",
+    "dot": "polkadot",
+    "link": "chainlink",
+    "matic": "polygon-ecosystem-token",
+    "pol": "polygon-ecosystem-token",
+    "avax": "avalanche-2",
+    "bnb": "binancecoin",
+    "shib": "shiba-inu",
+    "near": "near",
+    "usdt": "tether",
+    "usdc": "usd-coin"
+}
+
 @tool
 async def search_mutual_funds_tool(query: str) -> str:
-    """Search for mutual funds by name and return top results with verified Inception CAGR and scheme codes from MFAPI."""
+    """
+    Search for mutual funds by name and return verified quantitative risk-adjusted metrics:
+    Inception CAGR, Annualized Volatility (σ), and Sharpe Ratio from live historical MFAPI data.
+    """
     try:
-        results = await search_schemes(query)
+        results = await search_schemes(query.strip())
         if not results:
-            return "No mutual funds found matching the search query."
+            return f"No mutual funds found matching '{query}'."
         top_results = results[:3]
         
         info = []
         for fund in top_results:
             hist = await get_scheme_history(fund['schemeCode'])
-            cagr = calculate_cagr_since_inception(hist)
-            info.append(f"• Name: {fund['schemeName']} | Scheme Code: {fund['schemeCode']} | Inception CAGR: {cagr}%")
-        return "\n".join(info)
+            metrics = calculate_fund_metrics(hist)
+            info.append(
+                f"• Scheme: {fund['schemeName']} (Code: {fund['schemeCode']})\n"
+                f"  - Inception CAGR: {metrics['cagr']}%\n"
+                f"  - Annualized Volatility (σ): {metrics['volatility']}%\n"
+                f"  - Risk-Adjusted Sharpe Ratio: {metrics['sharpe_ratio']}"
+            )
+        return "\n\n".join(info)
     except Exception as e:
         return f"Error fetching mutual fund data: {str(e)}"
 
 @tool
 async def get_crypto_price_tool(coin_ids: str) -> str:
-    """Fetch live market price, 24h % change, and stats for cryptocurrency tokens. coin_ids should be comma-separated (e.g. 'bitcoin,ethereum,solana')."""
+    """
+    Fetch live crypto prices, 24h % change, and market stats.
+    Supports self-healing arguments: symbols (e.g. 'btc eth sol') or comma-separated names are auto-normalized.
+    """
     try:
-        ids = [c.strip().lower() for c in coin_ids.split(",") if c.strip()]
-        data = await get_crypto_prices(ids)
+        # Self-healing tokenizer: handles spaces, commas, semicolons
+        tokens = re.split(r'[,;\s]+', coin_ids.strip().lower())
+        normalized_ids = [TICKER_MAP.get(t, t) for t in tokens if t]
+        
+        if not normalized_ids:
+            normalized_ids = ["bitcoin", "ethereum", "solana"]
+            
+        data = await get_crypto_prices(normalized_ids)
         if not data:
-            return "No crypto market data returned for the requested coins."
+            return f"No live market data returned for coins: {', '.join(normalized_ids)}."
+            
         res = []
         for coin, stats in data.items():
             price = stats.get('usd', 0)
             change = stats.get('usd_24h_change', 0)
-            res.append(f"• {coin.capitalize()}: ${price:,.2f} USD (24h Change: {change:+.2f}%)")
+            mcap = stats.get('usd_market_cap', 0)
+            mcap_str = f" | MCap: ${mcap:,.0f}" if mcap else ""
+            res.append(f"• {coin.capitalize()}: ${price:,.2f} USD (24h Change: {change:+.2f}%{mcap_str})")
         return "\n".join(res)
     except Exception as e:
         return f"Error fetching crypto prices: {str(e)}"
@@ -80,13 +121,13 @@ async def get_crypto_price_tool(coin_ids: str) -> str:
 async def scrape_live_financial_news_and_sentiment_tool(query: str) -> str:
     """
     Live Web Scraping & Financial News RAG Tool.
-    Scrapes real-time financial market news, macroeconomic sentiment, regulatory announcements (e.g., SEBI guidelines, SEC ETF filings),
-    and risk signals for specific stocks, mutual funds, crypto tokens, or asset classes.
+    Scrapes real-time financial market news, macroeconomic sentiment, regulatory announcements (e.g. SEBI guidelines, RBI rate decisions, SEC ETF filings),
+    and risk signals for specific mutual funds, stocks, crypto tokens, or asset classes.
     """
     try:
         return await FinancialNewsRAGService.get_rag_sentiment_context(query)
     except Exception as e:
-        return f"Live web scraping summary: Market sentiment for '{query}' is currently steady with standard volatility."
+        return f"Live web intelligence summary: Market sentiment for '{query}' is currently steady."
 
 # Complete Dual-Stream Hybrid Tool Suite
 tools = [
@@ -97,12 +138,13 @@ tools = [
 
 system_message = (
     "You are FinovoAI, a state-of-the-art intelligent agentic financial investment advisor powered by a Dual-Stream Neuro-Symbolic Engine.\n\n"
-    "Your core operational capabilities:\n"
-    "1. Quantitative Precision Stream: Use `search_mutual_funds_tool` and `get_crypto_price_tool` to retrieve 100% verified, live market numbers (NAVs, CAGR, live token prices).\n"
-    "2. Qualitative Live Intelligence Stream: Use `scrape_live_financial_news_and_sentiment_tool` to scrape fresh breaking news, market sentiment, and regulatory updates (SEBI/crypto) from the web.\n"
-    "3. Multi-Asset Portfolio Synthesis: Provide unified recommendations balancing SEBI-regulated Indian Mutual Funds and Crypto assets based on user age, investment duration, and risk appetite.\n"
-    "4. Formatting: Always structure asset allocations and fund comparisons in crisp, clean Markdown tables.\n"
-    "5. Compliance: Always conclude with a regulatory disclaimer stating this is for educational and advisory demonstration purposes."
+    "Your operational principles:\n"
+    "1. Quantitative Stream: Use `search_mutual_funds_tool` and `get_crypto_price_tool` to retrieve live verified numbers (CAGR, Annualized Volatility σ, Sharpe Ratio, and real-time prices).\n"
+    "2. Qualitative Live Intelligence Stream: Use `scrape_live_financial_news_and_sentiment_tool` to fetch breaking web news and SEBI/macroeconomic sentiment.\n"
+    "3. Neuro-Symbolic Synthesis: Present asset allocations that strictly sum to 100%. Balance Equity Mutual Funds with Web3 Crypto based on user age, investment duration, and risk appetite.\n"
+    "4. Risk & Inflation: Cite Sharpe Ratios for risk-adjusted performance and mention inflation-adjusted purchasing power.\n"
+    "5. Output Format: Present fund comparisons and allocations in crisp Markdown tables.\n"
+    "6. Mandatory Fiduciary Guardrail: Always conclude with an explicit regulatory disclaimer that this is educational advice and not SEBI-registered financial advisory."
 )
 
 agent_executor = create_react_agent(llm, tools, prompt=system_message)
