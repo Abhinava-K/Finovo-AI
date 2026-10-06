@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import mf_routes, crypto_routes, agent_routes
+from app.api import mf_routes, crypto_routes, agent_routes, portfolio_routes
 
 app = FastAPI(title="FinovoAI Investment Advisor API")
 
@@ -13,6 +13,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(portfolio_routes.router, prefix="/api/portfolio", tags=["Unified Portfolio Engine"])
 app.include_router(mf_routes.router, prefix="/api/mf", tags=["Mutual Funds"])
 app.include_router(crypto_routes.router, prefix="/api/crypto", tags=["Crypto"])
 app.include_router(agent_routes.router, prefix="/api/agent", tags=["Agentic Advisor"])

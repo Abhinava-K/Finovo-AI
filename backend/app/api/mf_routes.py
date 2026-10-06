@@ -1,18 +1,33 @@
 from fastapi import APIRouter
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
+from typing import Optional, Any, Dict
 from app.core.mf_engine import calculate_allocation, calculate_projections
 
 router = APIRouter()
 
 class MFRequest(BaseModel):
-    age: int = Field(..., gt=0)
-    amount: float = Field(..., ge=1000)
-    risk: str
-    duration_years: int = Field(..., gt=0)
+    age: int = Field(..., gt=0, description="Investor Age")
+    amount: float = Field(default=0.0, description="Investment Amount in INR")
+    capital: Optional[float] = Field(default=None, description="Alias for investment amount")
+    risk: str = Field(..., description="Risk Profile: low, medium, or high")
+    duration_years: int = Field(..., gt=0, description="Investment duration in years")
+
+    @model_validator(mode='before')
+    @classmethod
+    def reconcile_amount_and_capital(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            # If capital is provided and amount is not, set amount = capital
+            if "capital" in data and "amount" not in data:
+                data["amount"] = data["capital"]
+            elif "amount" in data and "capital" not in data:
+                data["capital"] = data["amount"]
+        return data
 
     @field_validator('amount')
     @classmethod
     def validate_amount(cls, v: float) -> float:
+        if v < 1000:
+            raise ValueError("Investment amount must be at least ₹1,000")
         if v % 100 != 0:
             raise ValueError("Investment amount must be in multiples of 100")
         return v
@@ -20,15 +35,18 @@ class MFRequest(BaseModel):
     @field_validator('risk')
     @classmethod
     def validate_risk(cls, v: str) -> str:
-        if v.lower() not in ["low", "medium", "high"]:
+        v_clean = v.lower().strip()
+        norm_map = {"conservative": "low", "moderate": "medium", "aggressive": "high"}
+        v_clean = norm_map.get(v_clean, v_clean)
+        if v_clean not in ["low", "medium", "high"]:
             raise ValueError("Risk must be one of 'low', 'medium', or 'high'")
-        return v.lower()
+        return v_clean
 
 @router.post("/recommend")
 async def recommend_mf(req: MFRequest):
     alloc = calculate_allocation(req.age, req.risk.lower(), req.duration_years)
     
-    # Mock database of diverse funds
+    # Database of representative funds
     fund_db = {
         "equity": [
             {"name": "HDFC Top 100", "fund_house": "HDFC", "category": "equity", "cagr_inception": 14.2, "risk_level": "medium"},
@@ -54,22 +72,18 @@ async def recommend_mf(req: MFRequest):
         ]
     }
 
-    # Dynamic selection logic based on risk and age and amount
     top_funds = []
     
     def select_fund(category, target_risk, age, amount):
         available = fund_db.get(category, [])
         if not available: return None
         
-        # Try to find an exact risk match
         matches = [f for f in available if f["risk_level"] == target_risk]
         if not matches:
             matches = available
             
-        # Use age, amount to add variety based on user profile dynamically
         index = (age * int(amount)) % len(matches)
         selected = matches[index]
-        # Remove risk_level key for response
         return {k: v for k, v in selected.items() if k != "risk_level"}
 
     if alloc["allocation"]["equity"] > 0:
@@ -79,7 +93,6 @@ async def recommend_mf(req: MFRequest):
     if alloc["allocation"]["debt"] > 0:
         top_funds.append(select_fund("debt", req.risk.lower(), req.age, req.amount))
     
-    # Calculate a weighted average CAGR dynamically based on the specific funds selected
     avg_cagr = 0
     total_alloc = alloc["allocation"]["equity"] + alloc["allocation"]["midcap"] + alloc["allocation"]["debt"]
     
