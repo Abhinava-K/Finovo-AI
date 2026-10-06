@@ -1,14 +1,72 @@
 /**
  * API type definitions — derived directly from backend source code.
- * DO NOT add fields that are not in the actual backend responses.
  *
  * Sources verified against:
+ *   backend/app/api/portfolio_routes.py
  *   backend/app/api/mf_routes.py
  *   backend/app/api/crypto_routes.py
  *   backend/app/api/agent_routes.py
+ *   backend/app/core/portfolio_engine.py
  *   backend/app/core/mf_engine.py
  *   backend/app/core/crypto_engine.py
  */
+
+// ─── Unified TradFi + DeFi Portfolio Module ─────────────────────────────────
+
+export interface UnifiedPortfolioRequest {
+  age: number
+  capital: number
+  risk: 'low' | 'medium' | 'high'
+  duration_years: number
+  inflation_pct?: number
+}
+
+export interface UnifiedAllocationMatrix {
+  equity_largecap: number
+  equity_midcap: number
+  equity_total: number
+  debt_and_liquid: number
+  gold_commodities: number
+  crypto_assets: number
+  sum_verification: number
+}
+
+export interface UnifiedProjection {
+  initial_investment: number
+  conservative_future_value: number
+  expected_future_value: number
+  optimistic_future_value: number
+  real_purchasing_power: number
+  assumed_inflation_pct: number
+}
+
+export interface UnifiedRebalancingPhase {
+  phase: string
+  equity_largecap: number
+  equity_midcap: number
+  debt: number
+  gold: number
+  crypto: number
+  total_weight: number
+}
+
+export interface UnifiedPortfolioResponse {
+  summary: {
+    investor_age: number
+    capital_amount: number
+    risk_profile: string
+    duration_years: number
+    expected_blended_cagr: number
+  }
+  allocation_matrix: UnifiedAllocationMatrix
+  financial_projections: UnifiedProjection
+  lifecycle_rebalancing: UnifiedRebalancingPhase[]
+  fiduciary_compliance: {
+    crypto_capped_at_15_pct: boolean
+    senior_capital_protected: boolean
+    regulatory_disclaimer: string
+  }
+}
 
 // ─── Mutual Fund Module ──────────────────────────────────────────────────────
 
@@ -88,14 +146,24 @@ export interface CryptoRecommendResponse {
 
 // ─── AI Agent Module ─────────────────────────────────────────────────────────
 
+export interface HistoryTurn {
+  role: 'user' | 'assistant'
+  content: string
+}
+
 /** Sent to POST /api/agent/chat */
 export interface AgentChatRequest {
   query: string
+  history?: HistoryTurn[]
 }
 
 /** Received from POST /api/agent/chat */
 export interface AgentChatResponse {
   reply: string  // Markdown string — may contain GFM tables, bold, lists, disclaimers
+  structured_allocation?: Record<string, number>
+  sum_invariant_verified?: boolean
+  disclaimer_verified?: boolean
+  latency_ms?: number
 }
 
 // ─── API Error Types ─────────────────────────────────────────────────────────
