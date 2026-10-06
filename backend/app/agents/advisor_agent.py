@@ -5,6 +5,8 @@ from app.services.coingecko import get_crypto_prices
 from app.services.news_scraper import FinancialNewsRAGService
 import os
 import re
+import asyncio
+from typing import List
 from dotenv import load_dotenv
 
 # Load environment variables from .env
@@ -129,21 +131,44 @@ async def scrape_live_financial_news_and_sentiment_tool(query: str) -> str:
     except Exception as e:
         return f"Live web intelligence summary: Market sentiment for '{query}' is currently steady."
 
+@tool
+async def get_unified_market_snapshot_tool(mf_query: str, crypto_ids: str, news_topic: str) -> str:
+    """
+    High-Speed Parallel Multi-Asset Dispatcher Tool (ToolLLM / HuggingGPT Architecture).
+    Executes Mutual Funds lookup, Crypto prices, and Breaking Financial News Scraping concurrently in parallel via asyncio.gather.
+    Use this for comprehensive hybrid asset advisory requests to minimize latency.
+    """
+    try:
+        mf_task = search_mutual_funds_tool.ainvoke({"query": mf_query})
+        crypto_task = get_crypto_price_tool.ainvoke({"coin_ids": crypto_ids})
+        news_task = scrape_live_financial_news_and_sentiment_tool.ainvoke({"query": news_topic})
+
+        mf_res, crypto_res, news_res = await asyncio.gather(mf_task, crypto_task, news_task)
+
+        return (
+            f"=== 📊 LIVE MUTUAL FUNDS SNAPSHOT ===\n{mf_res}\n\n"
+            f"=== 🪙 LIVE CRYPTO ASSET SNAPSHOT ===\n{crypto_res}\n\n"
+            f"=== 🌐 BREAKING MARKET INTELLIGENCE & SENTIMENT ===\n{news_res}"
+        )
+    except Exception as e:
+        return f"Parallel snapshot fallback: {str(e)}"
+
 # Complete Dual-Stream Hybrid Tool Suite
 tools = [
     search_mutual_funds_tool, 
     get_crypto_price_tool, 
-    scrape_live_financial_news_and_sentiment_tool
+    scrape_live_financial_news_and_sentiment_tool,
+    get_unified_market_snapshot_tool
 ]
 
 system_message = (
     "You are FinovoAI, a state-of-the-art intelligent agentic financial investment advisor powered by a Dual-Stream Neuro-Symbolic Engine.\n\n"
     "Your operational principles:\n"
-    "1. Quantitative Stream: Use `search_mutual_funds_tool` and `get_crypto_price_tool` to retrieve live verified numbers (CAGR, Annualized Volatility σ, Sharpe Ratio, and real-time prices).\n"
-    "2. Qualitative Live Intelligence Stream: Use `scrape_live_financial_news_and_sentiment_tool` to fetch breaking web news and SEBI/macroeconomic sentiment.\n"
-    "3. Neuro-Symbolic Synthesis: Present asset allocations that strictly sum to 100%. Balance Equity Mutual Funds with Web3 Crypto based on user age, investment duration, and risk appetite.\n"
-    "4. Risk & Inflation: Cite Sharpe Ratios for risk-adjusted performance and mention inflation-adjusted purchasing power.\n"
-    "5. Output Format: Present fund comparisons and allocations in crisp Markdown tables.\n"
+    "1. Multi-Turn Context Tracking: Maintain context across conversation history (investor age, capital, duration, risk tolerance).\n"
+    "2. Quantitative Precision Stream: Use `search_mutual_funds_tool`, `get_crypto_price_tool`, or `get_unified_market_snapshot_tool` to retrieve live verified numbers (CAGR, Annualized Volatility σ, Sharpe Ratio, real-time prices).\n"
+    "3. Qualitative Live Intelligence Stream: Incorporate real-time web news and SEBI/macroeconomic sentiment.\n"
+    "4. Neuro-Symbolic Allocation Invariant: Always present percentage asset splits that strictly sum to 100% (e.g. Equity MF: 55%, Debt: 25%, Gold: 10%, Crypto: 10%). Enforce fiduciary guardrails (cap crypto at max 15% for high risk, 0% for seniors).\n"
+    "5. Formatting: Always structure fund comparisons and allocation matrices in clean Markdown tables.\n"
     "6. Mandatory Fiduciary Guardrail: Always conclude with an explicit regulatory disclaimer that this is educational advice and not SEBI-registered financial advisory."
 )
 

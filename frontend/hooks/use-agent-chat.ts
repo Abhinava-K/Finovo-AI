@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { chatWithAgent } from '@/lib/api/agent'
-import type { ChatMessage } from '@/types/api'
+import type { ChatMessage, HistoryTurn } from '@/types/api'
 
 function generateId(): string {
   return `msg_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
@@ -23,6 +23,14 @@ export function useAgentChat() {
       timestamp: new Date(),
     }
 
+    // Build multi-turn history payload from prior completed turns
+    const historyPayload: HistoryTurn[] = messages
+      .filter((m) => !m.isLoading && m.content)
+      .map((m) => ({
+        role: m.role,
+        content: m.content
+      }))
+
     // Optimistic: add user message + placeholder assistant message
     const placeholderId = generateId()
     setMessages((prev) => [
@@ -34,7 +42,10 @@ export function useAgentChat() {
     setError(null)
 
     try {
-      const response = await chatWithAgent({ query: query.trim() })
+      const response = await chatWithAgent({
+        query: query.trim(),
+        history: historyPayload.length > 0 ? historyPayload : undefined
+      })
 
       setMessages((prev) =>
         prev.map((m) =>
@@ -51,7 +62,7 @@ export function useAgentChat() {
     } finally {
       setIsLoading(false)
     }
-  }, [isLoading])
+  }, [messages, isLoading])
 
   const clearMessages = useCallback(() => {
     setMessages([])
