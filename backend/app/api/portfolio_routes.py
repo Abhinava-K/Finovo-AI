@@ -1,7 +1,8 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Request
 from pydantic import BaseModel, Field, field_validator, model_validator
 from typing import Optional, Any
 from app.core.portfolio_engine import UnifiedPortfolioEngine
+from app.core.rate_limiter import portfolio_limiter
 
 router = APIRouter()
 
@@ -41,11 +42,14 @@ class UnifiedPortfolioRequest(BaseModel):
         return v_clean
 
 @router.post("/recommend")
-async def recommend_unified_portfolio(req: UnifiedPortfolioRequest):
+async def recommend_unified_portfolio(req: UnifiedPortfolioRequest, request: Request):
     """
     Calculates unified multi-asset allocation (Equity MFs + Debt + Gold + Web3 Crypto)
     with strict mathematical invariants, lifecycle rebalancing, and inflation-adjusted projections.
+    Protected by IP-based sliding window rate limiter.
     """
+    await portfolio_limiter.check_rate_limit(request)
+    
     portfolio = UnifiedPortfolioEngine.calculate_unified_allocation(
         age=req.age,
         capital=req.capital,
