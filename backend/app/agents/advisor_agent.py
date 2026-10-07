@@ -80,13 +80,11 @@ async def search_mutual_funds_tool(query: str) -> str:
         for fund in top_results:
             hist = await get_scheme_history(fund['schemeCode'])
             metrics = calculate_fund_metrics(hist)
+            # Token-minified high-density representation
             info.append(
-                f"• Scheme: {fund['schemeName']} (Code: {fund['schemeCode']})\n"
-                f"  - Inception CAGR: {metrics['cagr']}%\n"
-                f"  - Annualized Volatility (σ): {metrics['volatility']}%\n"
-                f"  - Risk-Adjusted Sharpe Ratio: {metrics['sharpe_ratio']}"
+                f"[Fund: {fund['schemeName']} | Code: {fund['schemeCode']} | CAGR: {metrics['cagr']}% | Vol(σ): {metrics['volatility']}% | Sharpe: {metrics['sharpe_ratio']}]"
             )
-        return "\n\n".join(info)
+        return "\n".join(info)
     except Exception as e:
         return f"Error fetching mutual fund data: {str(e)}"
 
@@ -97,7 +95,6 @@ async def get_crypto_price_tool(coin_ids: str) -> str:
     Supports self-healing arguments: symbols (e.g. 'btc eth sol') or comma-separated names are auto-normalized.
     """
     try:
-        # Self-healing tokenizer: handles spaces, commas, semicolons
         tokens = re.split(r'[,;\s]+', coin_ids.strip().lower())
         normalized_ids = [TICKER_MAP.get(t, t) for t in tokens if t]
         
@@ -113,8 +110,8 @@ async def get_crypto_price_tool(coin_ids: str) -> str:
             price = stats.get('usd', 0)
             change = stats.get('usd_24h_change', 0)
             mcap = stats.get('usd_market_cap', 0)
-            mcap_str = f" | MCap: ${mcap:,.0f}" if mcap else ""
-            res.append(f"• {coin.capitalize()}: ${price:,.2f} USD (24h Change: {change:+.2f}%{mcap_str})")
+            mcap_str = f" | MCap: ${mcap/1e9:.1f}B" if mcap else ""
+            res.append(f"[{coin.capitalize()}: ${price:,.2f} | 24h: {change:+.2f}%{mcap_str}]")
         return "\n".join(res)
     except Exception as e:
         return f"Error fetching crypto prices: {str(e)}"
@@ -163,13 +160,13 @@ tools = [
 
 system_message = (
     "You are FinovoAI, a state-of-the-art intelligent agentic financial investment advisor powered by a Dual-Stream Neuro-Symbolic Engine.\n\n"
-    "Your operational principles:\n"
-    "1. Multi-Turn Context Tracking: Maintain context across conversation history (investor age, capital, duration, risk tolerance).\n"
-    "2. Quantitative Precision Stream: Use `search_mutual_funds_tool`, `get_crypto_price_tool`, or `get_unified_market_snapshot_tool` to retrieve live verified numbers (CAGR, Annualized Volatility σ, Sharpe Ratio, real-time prices).\n"
-    "3. Qualitative Live Intelligence Stream: Incorporate real-time web news and SEBI/macroeconomic sentiment.\n"
-    "4. Neuro-Symbolic Allocation Invariant: Always present percentage asset splits that strictly sum to 100% (e.g. Equity MF: 55%, Debt: 25%, Gold: 10%, Crypto: 10%). Enforce fiduciary guardrails (cap crypto at max 15% for high risk, 0% for seniors).\n"
-    "5. Formatting: Always structure fund comparisons and allocation matrices in clean Markdown tables.\n"
-    "6. Mandatory Fiduciary Guardrail: Always conclude with an explicit regulatory disclaimer that this is educational advice and not SEBI-registered financial advisory."
+    "Operational rules:\n"
+    "1. Multi-Turn Context: Maintain context across conversation turns (age, capital, duration, risk).\n"
+    "2. Quantitative Stream: Use tools to retrieve verified numbers (CAGR, Annualized Volatility σ, Sharpe Ratio, live prices).\n"
+    "3. Qualitative Stream: Incorporate breaking web news and regulatory sentiment.\n"
+    "4. Invariant: Present asset allocations summing strictly to 100% (e.g. Equity MF: 55%, Debt: 25%, Gold: 10%, Crypto: 10%). Enforce fiduciary guardrail (Crypto ≤ 15%).\n"
+    "5. Formatting: Output comparisons and allocation matrices in clean Markdown tables.\n"
+    "6. Compliance: Always conclude with an explicit regulatory disclaimer that this is educational advice and not SEBI-registered financial advisory."
 )
 
 agent_executor = create_react_agent(llm, tools, prompt=system_message)
