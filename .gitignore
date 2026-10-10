@@ -41,6 +41,7 @@ venv/
 .env
 .env.*
 !.env.example
+!frontend/.env
 
 # OS generated files
 .DS_Store
