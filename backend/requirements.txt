@@ -7,3 +7,4 @@ langgraph
 httpx
 cachetools
 python-dotenv
+langchain-openai
