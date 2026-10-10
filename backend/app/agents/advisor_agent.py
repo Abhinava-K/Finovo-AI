@@ -30,15 +30,15 @@ def get_llm():
         )
     ):
         from langchain_openai import ChatOpenAI
-        model_name = model or "openai/gpt-oss-120b"
+        model_name = model or "gpt-4o-mini"
         base_url = os.getenv("OPENAI_BASE_URL", None)
-        api_key = os.getenv("OPENAI_API_KEY", None)
+        api_key = os.getenv("OPENAI_API_KEY") or "sk-dummy-placeholder-key"
         return ChatOpenAI(model=model_name, temperature=temperature, base_url=base_url, api_key=api_key)
     
     # 2. Groq (Default fallback or explicit)
     from langchain_groq import ChatGroq
-    model_name = model or "openai/gpt-oss-120b"
-    groq_api_key = os.getenv("GROQ_API_KEY")
+    model_name = model or "llama-3.3-70b-versatile"
+    groq_api_key = os.getenv("GROQ_API_KEY") or "gsk_dummy_placeholder_key"
     return ChatGroq(model=model_name, temperature=temperature, api_key=groq_api_key)
 
 # Initialize the LLM instance
