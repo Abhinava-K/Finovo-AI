@@ -407,7 +407,7 @@ function ErrorState({ error, onRetry }: { error: Error; onRetry: () => void }) {
         <AlertTriangle className="w-10 h-10 text-red-400 mx-auto mb-4" />
         <h3 className="text-sm font-bold text-foreground mb-2">Recommendation Failed</h3>
         <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
-          {error.message || 'Unable to connect to backend. Ensure it is running at localhost:8000.'}
+          {error.message || 'Unable to connect to backend. Ensure the backend service is reachable.'}
         </p>
         <Button onClick={onRetry} size="sm" variant="glass" className="gap-2">
           <RotateCcw className="w-3.5 h-3.5" /> Try Again

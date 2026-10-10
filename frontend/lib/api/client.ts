@@ -1,7 +1,7 @@
 import axios, { AxiosError } from 'axios'
 import type { FastAPIValidationError } from '@/types/api'
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? 'http://localhost:8000'
+const BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL || 'https://finovo-ai-djaqqgasfjb7etbd.centralindia-01.azurewebsites.net'
 
 export const apiClient = axios.create({
   baseURL: BASE_URL,

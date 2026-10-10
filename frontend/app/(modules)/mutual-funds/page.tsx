@@ -365,7 +365,7 @@ function ErrorState({ error, onRetry }: { error: Error; onRetry: () => void }) {
         </div>
         <h3 className="text-sm font-bold text-foreground mb-2">Recommendation Failed</h3>
         <p className="text-xs text-muted-foreground mb-4 leading-relaxed">
-          {error.message || 'Unable to fetch recommendation. Make sure the backend is running at localhost:8000.'}
+          {error.message || 'Unable to fetch recommendation. Make sure the backend service is reachable.'}
         </p>
         <Button onClick={onRetry} size="sm" variant="glass" className="gap-2">
           <RotateCcw className="w-3.5 h-3.5" /> Try Again
