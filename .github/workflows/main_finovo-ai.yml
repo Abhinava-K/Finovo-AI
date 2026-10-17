@@ -5,10 +5,10 @@
 name: Build and deploy Python app to Azure Web App - Finovo-ai
 
 on:
-  push:
-    branches:
-      - 'main'
-  workflow_dispatch:
+  workflow_dispatch: # Manual trigger only — deploy only when you explicitly ask it to
+  # push:
+  #   branches:
+  #     - 'main'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
