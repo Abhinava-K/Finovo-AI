@@ -12,11 +12,20 @@ from dotenv import load_dotenv
 # Load environment variables from .env
 load_dotenv()
 
+def clean_env_var(val: str) -> str:
+    """Sanitize env variables to handle accidental quotes or KEY= prefixes."""
+    if not val:
+        return ""
+    val = val.strip()
+    if "=" in val:
+        val = val.split("=", 1)[1].strip()
+    return val.strip("'\"")
+
 def get_llm():
     """Dynamically load and configure LLM from environment variables."""
-    provider = os.getenv("LLM_PROVIDER", "").strip().lower()
-    model = os.getenv("LLM_MODEL", "").strip()
-    temperature = float(os.getenv("LLM_TEMPERATURE", "0"))
+    provider = clean_env_var(os.getenv("LLM_PROVIDER", "")).lower()
+    model = clean_env_var(os.getenv("LLM_MODEL", ""))
+    temperature = float(clean_env_var(os.getenv("LLM_TEMPERATURE", "0")) or "0")
     
     # 1. OpenAI / OpenAI-compatible OSS endpoints (OpenRouter, Together, Local Ollama/vLLM, GPT OSS 120B)
     if provider in ["openai", "openrouter", "ollama", "custom"] or (
@@ -31,14 +40,14 @@ def get_llm():
     ):
         from langchain_openai import ChatOpenAI
         model_name = model or "gpt-4o-mini"
-        base_url = os.getenv("OPENAI_BASE_URL", None)
-        api_key = os.getenv("OPENAI_API_KEY") or "sk-dummy-placeholder-key"
+        base_url = clean_env_var(os.getenv("OPENAI_BASE_URL", "")) or None
+        api_key = clean_env_var(os.getenv("OPENAI_API_KEY", "")) or "sk-dummy-placeholder-key"
         return ChatOpenAI(model=model_name, temperature=temperature, base_url=base_url, api_key=api_key)
     
     # 2. Groq (Default fallback or explicit)
     from langchain_groq import ChatGroq
     model_name = model or "llama-3.3-70b-versatile"
-    groq_api_key = os.getenv("GROQ_API_KEY") or "gsk_dummy_placeholder_key"
+    groq_api_key = clean_env_var(os.getenv("GROQ_API_KEY", "")) or "gsk_dummy_placeholder_key"
     return ChatGroq(model=model_name, temperature=temperature, api_key=groq_api_key)
 
 # Initialize the LLM instance
