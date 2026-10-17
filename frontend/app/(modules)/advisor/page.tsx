@@ -6,12 +6,13 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import {
   BrainCircuit, Send, Trash2, Sparkles, TrendingUp, Bitcoin,
-  BarChart3, HelpCircle, Loader2, AlertTriangle, Copy, Check,
+  BarChart3, HelpCircle, Loader2, AlertTriangle, Copy, Check, Download,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { GlassCard } from '@/components/ui/glass-card'
 import { useAgentChat } from '@/hooks/use-agent-chat'
 import { formatRelativeTime } from '@/lib/formatters'
+import { exportChatTranscript } from '@/lib/capsule-export'
 
 // ─── Suggested prompts ────────────────────────────────────────────────────────
 
@@ -229,9 +230,20 @@ export default function AdvisorPage() {
           </p>
         </div>
         {messages.length > 0 && (
-          <Button onClick={clearMessages} variant="glass" size="sm" className="gap-2 shrink-0">
-            <Trash2 className="w-3.5 h-3.5" /> Clear
-          </Button>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              onClick={() => exportChatTranscript(messages)}
+              variant="glass"
+              size="sm"
+              className="gap-2 text-emerald-400 hover:text-emerald-300 border-emerald-500/30 hover:border-emerald-500/50"
+              title="Download conversation transcript as JSON"
+            >
+              <Download className="w-3.5 h-3.5" /> Export Chat (.json)
+            </Button>
+            <Button onClick={clearMessages} variant="glass" size="sm" className="gap-2 shrink-0">
+              <Trash2 className="w-3.5 h-3.5" /> Clear
+            </Button>
+          </div>
         )}
       </motion.div>
 
