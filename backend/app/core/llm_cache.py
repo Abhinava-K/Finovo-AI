@@ -29,11 +29,19 @@ class LLMQueryResponseCache:
         norm_query = cls._normalize_text(query)
         history_str = ""
         if history:
-            # Hash prior message turns to differentiate identical queries with different context
-            history_str = "|".join([
-                f"{getattr(m, 'role', m.get('role', ''))}:{cls._normalize_text(getattr(m, 'content', m.get('content', '')))}"
-                for m in history
-            ])
+            turns = []
+            for m in history:
+                if isinstance(m, dict):
+                    role = str(m.get('role', ''))
+                    content = str(m.get('content', ''))
+                elif isinstance(m, (list, tuple)) and len(m) >= 2:
+                    role = str(m[0])
+                    content = str(m[1])
+                else:
+                    role = str(getattr(m, 'role', ''))
+                    content = str(getattr(m, 'content', ''))
+                turns.append(f"{role}:{cls._normalize_text(content)}")
+            history_str = "|".join(turns)
         
         raw_key = f"{norm_query}__HIST__{history_str}"
         return hashlib.sha256(raw_key.encode('utf-8')).hexdigest()
