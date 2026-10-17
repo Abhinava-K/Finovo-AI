@@ -348,3 +348,62 @@ nextjs-portal,
   background: rgba(255, 255, 255, 0.3);
 }
 
+/* ─── Print-to-PDF Optimization with Watermarks & Timestamps ────────────── */
+.print-only-watermark {
+  display: none;
+}
+
+@media print {
+  /* Hide non-printable navigation, buttons, and decorative elements */
+  nav,
+  header,
+  aside,
+  footer,
+  .no-print,
+  button:not(.force-print),
+  input,
+  textarea {
+    display: none !important;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    font-size: 10.5pt !important;
+  }
+
+  /* Make glass cards crisp white with neat subtle border for paper printing */
+  .glass,
+  .glass-card,
+  .glass-elevated,
+  [class*="bg-white/"] {
+    background: #ffffff !important;
+    border: 1px solid #e2e8f0 !important;
+    color: #0f172a !important;
+    box-shadow: none !important;
+  }
+
+  .text-foreground,
+  h1, h2, h3, h4, p, span {
+    color: #0f172a !important;
+  }
+
+  .text-muted-foreground {
+    color: #475569 !important;
+  }
+
+  /* Reveal dedicated print watermark and header */
+  .print-only-watermark {
+    display: block !important;
+  }
+
+  /* Avoid cutting charts and tables across pages */
+  .page-break-inside-avoid,
+  .recharts-responsive-container,
+  table {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+}
+
+
