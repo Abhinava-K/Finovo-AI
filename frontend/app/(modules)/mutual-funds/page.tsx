@@ -171,8 +171,10 @@ function MFResults({ data, request, onReset }: ResultsProps) {
         </div>
         <div className="flex items-center gap-2">
           <ReportWatermark
-            moduleTitle="Mutual Fund Portfolio Blueprint"
-            investorDetails={`Age: ${request.age} Yrs · Capital: ₹${request.amount.toLocaleString('en-IN')} · Risk: ${request.risk.toUpperCase()} · Horizon: ${request.duration_years} Years`}
+            moduleTitle="Mutual Fund Portfolio Blueprint & Projections"
+            investorDetails={`Investor Profile: Age ${request.age} · ₹${(request.amount / 1000).toFixed(0)}K Capital · ${request.risk.toUpperCase()} Risk · ${request.duration_years}-Year Horizon`}
+            targetElementId="mf-portfolio-report-content"
+            filenamePrefix="finovo_mf_portfolio"
           />
           <Button
             onClick={() => exportMFCapsule(request, data)}
@@ -189,17 +191,19 @@ function MFResults({ data, request, onReset }: ResultsProps) {
         </div>
       </div>
 
-      {/* Allocation + Projection summary */}
-      <div className="grid sm:grid-cols-3 gap-4">
+      {/* ─── Printable / Downloadable PDF Report Target Container ─── */}
+      <div id="mf-portfolio-report-content" className="space-y-6">
+        {/* Allocation + Projection summary */}
+        <div className="grid sm:grid-cols-3 gap-4">
         {[
           { label: 'Best Case',   value: formatINR(projection.optimistic, true),   cagr: ((Math.pow(projection.optimistic / request.amount, 1 / request.duration_years) - 1) * 100).toFixed(1), color: 'text-emerald-400' },
           { label: 'Most Likely',     value: formatINR(projection.expected, true),     cagr: ((Math.pow(projection.expected / request.amount, 1 / request.duration_years) - 1) * 100).toFixed(1), color: 'text-blue-400' },
           { label: 'Worst Case', value: formatINR(projection.conservative, true), cagr: ((Math.pow(projection.conservative / request.amount, 1 / request.duration_years) - 1) * 100).toFixed(1), color: 'text-amber-400' },
         ].map(({ label, value, cagr, color }) => (
           <GlassCard key={label} variant="default" shine className="p-4 text-center">
-            <p className={`text-2xl font-black ${color} tabular`}>{value}</p>
-            <p className="text-xs text-muted-foreground mt-1">{label} in {request.duration_years}Y</p>
-            <p className="text-[10px] text-muted-foreground/70 mt-0.5">(~{cagr}% p.a.)</p>
+            <p className={`text-2xl font-black ${color} font-mono tracking-tight leading-tight`}>{value}</p>
+            <p className="text-xs font-semibold text-muted-foreground mt-1.5 leading-snug">{label} in {request.duration_years}Y</p>
+            <p className="text-[10px] font-mono text-muted-foreground/75 mt-0.5 leading-snug">(~{cagr}% p.a.)</p>
           </GlassCard>
         ))}
       </div>
@@ -229,8 +233,8 @@ function MFResults({ data, request, onReset }: ResultsProps) {
                 </PieChart>
               </ResponsiveContainer>
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                <span className="text-sm font-black text-foreground tabular">{formatINR(request.amount, true)}</span>
-                <span className="text-[9px] text-muted-foreground font-semibold">INVESTED</span>
+                <span className="text-sm font-black text-foreground font-mono tracking-tight">{formatINR(request.amount, true)}</span>
+                <span className="text-[9px] text-muted-foreground font-bold tracking-wider uppercase mt-0.5">INVESTED</span>
               </div>
             </div>
             <div className="flex flex-col gap-2 mt-4 w-full">
@@ -244,7 +248,7 @@ function MFResults({ data, request, onReset }: ResultsProps) {
                     <div className="w-20 h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
                       <div className="h-full rounded-full" style={{ width: `${value}%`, backgroundColor: color }} />
                     </div>
-                    <span className="text-xs font-bold text-foreground tabular w-8 text-right">{value}%</span>
+                    <span className="text-xs font-bold text-foreground font-mono w-8 text-right">{value}%</span>
                   </div>
                 </div>
               ))}
@@ -261,17 +265,23 @@ function MFResults({ data, request, onReset }: ResultsProps) {
           </div>
           <div className="space-y-3">
             {top_funds.map((fund, i) => (
-              <div key={fund.name} className="flex items-start gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/[0.05]">
-                <div className="w-6 h-6 rounded-md flex items-center justify-center border shrink-0 mt-0.5" style={{ backgroundColor: (CATEGORY_COLOR[fund.category] || '#3B82F6') + '18', borderColor: (CATEGORY_COLOR[fund.category] || '#3B82F6') + '40' }}>
-                  <span className="text-[8px] font-black" style={{ color: CATEGORY_COLOR[fund.category] || '#3B82F6' }}>{i + 1}</span>
+              <div key={fund.name} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/[0.05] min-h-[58px]">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className="w-7 h-7 rounded-lg flex items-center justify-center border shrink-0" style={{ backgroundColor: (CATEGORY_COLOR[fund.category] || '#3B82F6') + '18', borderColor: (CATEGORY_COLOR[fund.category] || '#3B82F6') + '40' }}>
+                    <span className="text-xs font-black font-mono leading-none" style={{ color: CATEGORY_COLOR[fund.category] || '#3B82F6' }}>{i + 1}</span>
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold text-foreground leading-snug truncate">{fund.name}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5 leading-none">{fund.fund_house} · {fund.category}</p>
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-semibold text-foreground leading-tight">{fund.name}</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5">{fund.fund_house} · {fund.category}</p>
-                </div>
-                <div className="text-right shrink-0">
-                  <p className="text-sm font-black text-emerald-400 tabular">{fund.cagr_inception.toFixed(1)}%</p>
-                  <p className="text-[10px] text-muted-foreground">CAGR</p>
+                <div className="flex flex-col items-end justify-center shrink-0 pl-3">
+                  <span className="text-sm font-black text-emerald-400 font-mono tracking-tight leading-tight">
+                    {fund.cagr_inception.toFixed(1)}%
+                  </span>
+                  <span className="text-[9px] font-bold text-muted-foreground/75 uppercase tracking-wider leading-none mt-1">
+                    CAGR
+                  </span>
                 </div>
               </div>
             ))}
@@ -361,6 +371,7 @@ function MFResults({ data, request, onReset }: ResultsProps) {
           </div>
         </GlassCard>
       )}
+      </div>
 
       {/* Disclaimer */}
       <p className="text-[11px] text-center text-muted-foreground/50 pb-4">

@@ -220,8 +220,10 @@ function CryptoResults({ data, request, onReset }: ResultsProps) {
         </div>
         <div className="flex items-center gap-2">
           <ReportWatermark
-            moduleTitle="Crypto Portfolio Blueprint (Live CoinGecko Data)"
-            investorDetails={`Capital: ₹${request.amount.toLocaleString('en-IN')} · Horizon: ${request.investment_horizon.toUpperCase()} · Max Drawdown: ${request.max_drawdown}%`}
+            moduleTitle="Crypto Portfolio Blueprint & Projections"
+            investorDetails={`Investor Profile: ₹${request.amount.toLocaleString('en-IN')} Capital · ${request.investment_horizon.toUpperCase()} Horizon · Max ${request.max_drawdown}% Drawdown`}
+            targetElementId="crypto-portfolio-report-content"
+            filenamePrefix="finovo_crypto_portfolio"
           />
           <Button
             onClick={() => exportCryptoCapsule(request, data)}
@@ -238,17 +240,19 @@ function CryptoResults({ data, request, onReset }: ResultsProps) {
         </div>
       </div>
 
-      {/* Projection summary */}
-      <div className="grid sm:grid-cols-3 gap-4">
+      {/* ─── Printable / Downloadable PDF Report Target Container ─── */}
+      <div id="crypto-portfolio-report-content" className="space-y-6">
+        {/* Projection summary */}
+        <div className="grid sm:grid-cols-3 gap-4">
         {[
           { label: 'Best Case',   value: formatINR(projection.optimistic, true),   cagr: ((Math.pow(projection.optimistic / request.amount, 1 / projection.duration_years) - 1) * 100).toFixed(1), color: 'text-emerald-400' },
           { label: 'Most Likely',     value: formatINR(projection.expected, true),     cagr: ((Math.pow(projection.expected / request.amount, 1 / projection.duration_years) - 1) * 100).toFixed(1), color: 'text-blue-400' },
           { label: 'Worst Case', value: formatINR(projection.conservative, true), cagr: ((Math.pow(projection.conservative / request.amount, 1 / projection.duration_years) - 1) * 100).toFixed(1), color: 'text-amber-400' },
         ].map(({ label, value, cagr, color }) => (
           <GlassCard key={label} variant="default" shine className="p-4 text-center">
-            <p className={`text-2xl font-black ${color} tabular`}>{value}</p>
-            <p className="text-xs text-muted-foreground mt-1">{label} in {projection.duration_years}Y</p>
-            <p className="text-[10px] text-muted-foreground/70 mt-0.5">(~{cagr}% p.a.)</p>
+            <p className={`text-2xl font-black ${color} font-mono tracking-tight leading-tight`}>{value}</p>
+            <p className="text-xs font-semibold text-muted-foreground mt-1.5 leading-snug">{label} in {projection.duration_years}Y</p>
+            <p className="text-[10px] font-mono text-muted-foreground/75 mt-0.5 leading-snug">(~{cagr}% p.a.)</p>
           </GlassCard>
         ))}
       </div>
@@ -399,6 +403,7 @@ function CryptoResults({ data, request, onReset }: ResultsProps) {
           </AreaChart>
         </ResponsiveContainer>
       </GlassCard>
+      </div>
 
       {/* Disclaimer */}
       <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-500/[0.06] border border-amber-500/[0.1]">
