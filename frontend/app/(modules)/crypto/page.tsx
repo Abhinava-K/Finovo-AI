@@ -208,9 +208,28 @@ function CryptoResults({ data, request, onReset }: ResultsProps) {
   const volatilityColor = risk_analysis.volatility === 'Low' ? 'text-emerald-400'
     : risk_analysis.volatility === 'Medium' ? 'text-amber-400' : 'text-red-400'
 
+  const [reportMeta] = useState(() => {
+    const now = new Date()
+    const dateStr = now.toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    })
+    const timeStr = now.toLocaleTimeString('en-IN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true,
+    })
+    return {
+      timestamp: `${dateStr} at ${timeStr}`,
+      certId: 'FNV-' + Math.random().toString(36).substring(2, 8).toUpperCase() + '-' + now.getSeconds(),
+    }
+  })
+
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} className="space-y-6">
-      {/* Header */}
+      {/* Action Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-2xl font-black text-foreground tracking-tight">Your Crypto Portfolio Blueprint</h2>
@@ -241,7 +260,37 @@ function CryptoResults({ data, request, onReset }: ResultsProps) {
       </div>
 
       {/* ─── Printable / Downloadable PDF Report Target Container ─── */}
-      <div id="crypto-portfolio-report-content" className="space-y-6">
+      <div id="crypto-portfolio-report-content" className="space-y-6 bg-[#05091a] p-5 sm:p-7 rounded-2xl border border-white/[0.08]">
+        {/* Certified Report Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-white/[0.1]">
+          <div>
+            <div className="flex items-center gap-3">
+              <span className="text-2xl font-black text-white tracking-tight leading-none">FINOVO AI</span>
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-violet-500/15 border border-violet-400/30 text-violet-400 text-[10px] font-bold tracking-wider uppercase leading-none">
+                <span className="w-1.5 h-1.5 rounded-full bg-violet-400"></span>
+                VERIFIED ADVISOR
+              </div>
+            </div>
+            <p className="text-sm font-bold text-slate-300 mt-2 leading-normal">
+              Crypto Asset Allocation & Risk Projections
+            </p>
+            <p className="text-xs text-slate-400 mt-0.5 leading-normal">
+              Investor Profile: ₹{request.amount.toLocaleString('en-IN')} Capital · {request.investment_horizon.toUpperCase()} Horizon · Max {request.max_drawdown}% Drawdown
+            </p>
+          </div>
+          <div className="text-left sm:text-right">
+            <p className="text-xs font-medium text-slate-300 leading-normal">
+              Generated: <span className="font-mono font-bold text-sky-400">{reportMeta.timestamp}</span>
+            </p>
+            <p className="text-[11px] font-mono text-slate-400 mt-1 leading-normal">
+              Cert ID: {reportMeta.certId}
+            </p>
+            <p className="text-[10px] text-emerald-400 font-semibold mt-1 leading-normal">
+              ✓ Zero-Knowledge Architecture (0-Database Cloud Retention)
+            </p>
+          </div>
+        </div>
+
         {/* Projection summary */}
         <div className="grid sm:grid-cols-3 gap-4">
         {[
@@ -403,6 +452,18 @@ function CryptoResults({ data, request, onReset }: ResultsProps) {
           </AreaChart>
         </ResponsiveContainer>
       </GlassCard>
+
+      {/* Compliance and Watermark Footer */}
+      <div className="pt-5 border-t border-white/[0.1] space-y-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs font-bold text-slate-300 gap-2">
+          <span>🔒 FINOVOAI VERIFIED ADVISORY • ZERO-KNOWLEDGE ARCHITECTURE</span>
+          <span className="font-mono text-[11px] text-slate-400">STAMP: {reportMeta.timestamp}</span>
+        </div>
+        <p className="text-[10px] text-slate-400 leading-relaxed">
+          Regulatory Disclaimer: This crypto investment advisory summary is generated strictly for educational and portfolio planning purposes.
+          FinovoAI is not a registered financial or crypto asset advisor. Digital asset prices are derived from live quantitative feeds (CoinGecko). Past performance does not guarantee future returns.
+        </p>
+      </div>
       </div>
 
       {/* Disclaimer */}

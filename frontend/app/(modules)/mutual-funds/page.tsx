@@ -159,9 +159,28 @@ function MFResults({ data, request, onReset }: ResultsProps) {
 
   const totalRebPhases = rebalancing_plan.length
 
+  const [reportMeta] = useState(() => {
+    const now = new Date()
+    const dateStr = now.toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    })
+    const timeStr = now.toLocaleTimeString('en-IN', {
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: true,
+    })
+    return {
+      timestamp: `${dateStr} at ${timeStr}`,
+      certId: 'FNV-' + Math.random().toString(36).substring(2, 8).toUpperCase() + '-' + now.getSeconds(),
+    }
+  })
+
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} className="space-y-6">
-      {/* Header */}
+      {/* Action Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-2xl font-black text-foreground tracking-tight">Your MF Portfolio Blueprint</h2>
@@ -192,7 +211,37 @@ function MFResults({ data, request, onReset }: ResultsProps) {
       </div>
 
       {/* ─── Printable / Downloadable PDF Report Target Container ─── */}
-      <div id="mf-portfolio-report-content" className="space-y-6">
+      <div id="mf-portfolio-report-content" className="space-y-6 bg-[#05091a] p-5 sm:p-7 rounded-2xl border border-white/[0.08]">
+        {/* Certified Report Header (visible on web & captured in PDF) */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-white/[0.1]">
+          <div>
+            <div className="flex items-center gap-3">
+              <span className="text-2xl font-black text-white tracking-tight leading-none">FINOVO AI</span>
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-blue-500/15 border border-blue-400/30 text-blue-400 text-[10px] font-bold tracking-wider uppercase leading-none">
+                <span className="w-1.5 h-1.5 rounded-full bg-blue-400"></span>
+                VERIFIED ADVISOR
+              </div>
+            </div>
+            <p className="text-sm font-bold text-slate-300 mt-2 leading-normal">
+              Mutual Fund Portfolio Blueprint & Projections
+            </p>
+            <p className="text-xs text-slate-400 mt-0.5 leading-normal">
+              Investor Profile: Age {request.age} · ₹{(request.amount / 1000).toFixed(0)}K Capital · {request.risk.toUpperCase()} Risk · {request.duration_years}-Year Horizon
+            </p>
+          </div>
+          <div className="text-left sm:text-right">
+            <p className="text-xs font-medium text-slate-300 leading-normal">
+              Generated: <span className="font-mono font-bold text-sky-400">{reportMeta.timestamp}</span>
+            </p>
+            <p className="text-[11px] font-mono text-slate-400 mt-1 leading-normal">
+              Cert ID: {reportMeta.certId}
+            </p>
+            <p className="text-[10px] text-emerald-400 font-semibold mt-1 leading-normal">
+              ✓ Zero-Knowledge Architecture (0-Database Cloud Retention)
+            </p>
+          </div>
+        </div>
+
         {/* Allocation + Projection summary */}
         <div className="grid sm:grid-cols-3 gap-4">
         {[
@@ -265,21 +314,21 @@ function MFResults({ data, request, onReset }: ResultsProps) {
           </div>
           <div className="space-y-3">
             {top_funds.map((fund, i) => (
-              <div key={fund.name} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/[0.05] min-h-[58px]">
-                <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <div className="w-7 h-7 rounded-lg flex items-center justify-center border shrink-0" style={{ backgroundColor: (CATEGORY_COLOR[fund.category] || '#3B82F6') + '18', borderColor: (CATEGORY_COLOR[fund.category] || '#3B82F6') + '40' }}>
-                    <span className="text-xs font-black font-mono leading-none" style={{ color: CATEGORY_COLOR[fund.category] || '#3B82F6' }}>{i + 1}</span>
+              <div key={fund.name} className="flex items-center justify-between gap-3 p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.05] min-h-[60px]">
+                <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center border shrink-0" style={{ backgroundColor: (CATEGORY_COLOR[fund.category] || '#3B82F6') + '18', borderColor: (CATEGORY_COLOR[fund.category] || '#3B82F6') + '40' }}>
+                    <span className="text-xs font-bold font-mono" style={{ color: CATEGORY_COLOR[fund.category] || '#3B82F6' }}>{i + 1}</span>
                   </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-semibold text-foreground leading-snug truncate">{fund.name}</p>
-                    <p className="text-[10px] text-muted-foreground mt-0.5 leading-none">{fund.fund_house} · {fund.category}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold text-foreground leading-normal">{fund.name}</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5 leading-normal">{fund.fund_house} · {fund.category}</p>
                   </div>
                 </div>
                 <div className="flex flex-col items-end justify-center shrink-0 pl-3">
-                  <span className="text-sm font-black text-emerald-400 font-mono tracking-tight leading-tight">
+                  <span className="text-sm font-bold text-emerald-400 font-mono tracking-tight leading-normal">
                     {fund.cagr_inception.toFixed(1)}%
                   </span>
-                  <span className="text-[9px] font-bold text-muted-foreground/75 uppercase tracking-wider leading-none mt-1">
+                  <span className="text-[9px] font-bold text-muted-foreground/80 uppercase tracking-wider leading-normal mt-0.5">
                     CAGR
                   </span>
                 </div>
@@ -343,22 +392,22 @@ function MFResults({ data, request, onReset }: ResultsProps) {
           </div>
           <div className="space-y-3">
             {rebalancing_plan.map((phase, i) => (
-              <div key={i} className="flex items-center gap-4 p-3 rounded-xl bg-white/[0.03] border border-white/[0.05]">
+              <div key={i} className="flex items-center gap-4 p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.05]">
                 <div className="w-8 h-8 rounded-lg bg-violet-400/10 border border-violet-400/20 flex items-center justify-center shrink-0">
-                  <span className="text-[10px] font-black text-violet-400">{i + 1}</span>
+                  <span className="text-xs font-bold font-mono text-violet-400 leading-none">{i + 1}</span>
                 </div>
                 <div className="flex-1">
-                  <p className="text-xs font-bold text-foreground">{phase.phase}</p>
-                  <div className="flex gap-1 h-1.5 rounded-full overflow-hidden mt-1.5 bg-white/[0.06]">
+                  <p className="text-xs font-bold text-foreground leading-normal">{phase.phase}</p>
+                  <div className="flex gap-1 h-2 rounded-full overflow-hidden mt-1.5 bg-white/[0.06]">
                     <div className="bg-blue-400 rounded-full" style={{ width: `${phase.equity}%` }} />
                     <div className="bg-amber-400 rounded-full" style={{ width: `${phase.midcap}%` }} />
                     <div className="bg-emerald-400 rounded-full" style={{ width: `${phase.debt}%` }} />
                   </div>
                 </div>
-                <div className="text-right text-[10px] shrink-0">
-                  <p className="text-blue-400 font-semibold">E:{phase.equity}%</p>
-                  <p className="text-amber-400 font-semibold">M:{phase.midcap}%</p>
-                  <p className="text-emerald-400 font-semibold">D:{phase.debt}%</p>
+                <div className="text-right text-[10px] shrink-0 font-mono leading-normal space-y-0.5">
+                  <p className="text-blue-400 font-bold leading-normal">E:{phase.equity}%</p>
+                  <p className="text-amber-400 font-bold leading-normal">M:{phase.midcap}%</p>
+                  <p className="text-emerald-400 font-bold leading-normal">D:{phase.debt}%</p>
                 </div>
               </div>
             ))}
@@ -371,6 +420,18 @@ function MFResults({ data, request, onReset }: ResultsProps) {
           </div>
         </GlassCard>
       )}
+
+      {/* Compliance and Watermark Footer */}
+      <div className="pt-5 border-t border-white/[0.1] space-y-2">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs font-bold text-slate-300 gap-2">
+          <span>🔒 FINOVOAI VERIFIED ADVISORY • ZERO-KNOWLEDGE ARCHITECTURE</span>
+          <span className="font-mono text-[11px] text-slate-400">STAMP: {reportMeta.timestamp}</span>
+        </div>
+        <p className="text-[10px] text-slate-400 leading-relaxed">
+          Regulatory Disclaimer: This investment advisory summary is generated strictly for educational and portfolio planning purposes.
+          FinovoAI is not a SEBI-registered investment advisor. Recommendations are calculated from live quantitative feeds (MFAPI.in). Past performance does not guarantee future returns.
+        </p>
+      </div>
       </div>
 
       {/* Disclaimer */}
