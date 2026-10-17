@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   TrendingUp, ArrowRight, RotateCcw, Star, RefreshCw, Info,
-  ChevronRight, Layers, BarChart3,
+  ChevronRight, Layers, BarChart3, Download,
 } from 'lucide-react'
 import {
   ResponsiveContainer, PieChart, Pie, Cell, Tooltip, AreaChart, Area,
@@ -15,9 +15,11 @@ import {
 import { Button } from '@/components/ui/button'
 import { GlassCard } from '@/components/ui/glass-card'
 import { LoadingScreen } from '@/components/ui/loading-screen'
+import { ReportWatermark } from '@/components/ui/report-watermark'
 import { useMFRecommend } from '@/hooks/use-mf-recommend'
 import { mfFormSchema as mfSchema, type MFFormValues } from '@/lib/validators/mf'
 import { formatINR, formatINRCompact, interpolateProjection } from '@/lib/formatters'
+import { exportMFCapsule } from '@/lib/capsule-export'
 import type { MFRecommendResponse } from '@/types/api'
 
 // ─── Colours ─────────────────────────────────────────────────────────────────
@@ -160,16 +162,31 @@ function MFResults({ data, request, onReset }: ResultsProps) {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-2xl font-black text-foreground tracking-tight">Your MF Portfolio Blueprint</h2>
           <p className="text-sm text-muted-foreground mt-0.5">
             Based on age {request.age} · ₹{(request.amount / 1000).toFixed(0)}K · {request.risk} risk · {request.duration_years}Y
           </p>
         </div>
-        <Button onClick={onReset} variant="glass" size="sm" className="gap-2">
-          <RotateCcw className="w-3.5 h-3.5" /> New Analysis
-        </Button>
+        <div className="flex items-center gap-2">
+          <ReportWatermark
+            moduleTitle="Mutual Fund Portfolio Blueprint"
+            investorDetails={`Age: ${request.age} Yrs · Capital: ₹${request.amount.toLocaleString('en-IN')} · Risk: ${request.risk.toUpperCase()} · Horizon: ${request.duration_years} Years`}
+          />
+          <Button
+            onClick={() => exportMFCapsule(request, data)}
+            variant="glass"
+            size="sm"
+            className="no-print gap-2 text-blue-400 hover:text-blue-300 border-blue-500/30 hover:border-blue-500/50"
+            title="Download full JSON portfolio metadata for offline privacy or future AI rebalancing"
+          >
+            <Download className="w-3.5 h-3.5" /> Save Capsule (.json)
+          </Button>
+          <Button onClick={onReset} variant="glass" size="sm" className="no-print gap-2">
+            <RotateCcw className="w-3.5 h-3.5" /> New Analysis
+          </Button>
+        </div>
       </div>
 
       {/* Allocation + Projection summary */}

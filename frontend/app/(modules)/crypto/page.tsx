@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Bitcoin, ArrowRight, RotateCcw, Shield, AlertTriangle,
-  Info, BarChart3, Zap,
+  Info, BarChart3, Zap, Download,
 } from 'lucide-react'
 import {
   ResponsiveContainer, PieChart, Pie, Cell, Tooltip, AreaChart, Area,
@@ -15,9 +15,11 @@ import {
 import { Button } from '@/components/ui/button'
 import { GlassCard } from '@/components/ui/glass-card'
 import { LoadingScreen } from '@/components/ui/loading-screen'
+import { ReportWatermark } from '@/components/ui/report-watermark'
 import { useCryptoRecommend } from '@/hooks/use-crypto-recommend'
 import { cryptoFormSchema as cryptoSchema, type CryptoFormValues } from '@/lib/validators/crypto'
 import { formatINR, formatINRCompact, interpolateProjection } from '@/lib/formatters'
+import { exportCryptoCapsule } from '@/lib/capsule-export'
 import type { CryptoRecommendResponse } from '@/types/api'
 
 // ─── Coin colour map ──────────────────────────────────────────────────────────
@@ -209,16 +211,31 @@ function CryptoResults({ data, request, onReset }: ResultsProps) {
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }} className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-2xl font-black text-foreground tracking-tight">Your Crypto Portfolio Blueprint</h2>
           <p className="text-sm text-muted-foreground mt-0.5">
             {formatINR(request.amount, true)} · {request.investment_horizon} · max {request.max_drawdown}% drawdown
           </p>
         </div>
-        <Button onClick={onReset} variant="glass" size="sm" className="gap-2">
-          <RotateCcw className="w-3.5 h-3.5" /> New Analysis
-        </Button>
+        <div className="flex items-center gap-2">
+          <ReportWatermark
+            moduleTitle="Crypto Portfolio Blueprint (Live CoinGecko Data)"
+            investorDetails={`Capital: ₹${request.amount.toLocaleString('en-IN')} · Horizon: ${request.investment_horizon.toUpperCase()} · Max Drawdown: ${request.max_drawdown}%`}
+          />
+          <Button
+            onClick={() => exportCryptoCapsule(request, data)}
+            variant="glass"
+            size="sm"
+            className="no-print gap-2 text-violet-400 hover:text-violet-300 border-violet-500/30 hover:border-violet-500/50"
+            title="Download full JSON crypto metadata for offline privacy or future AI rebalancing"
+          >
+            <Download className="w-3.5 h-3.5" /> Save Capsule (.json)
+          </Button>
+          <Button onClick={onReset} variant="glass" size="sm" className="no-print gap-2">
+            <RotateCcw className="w-3.5 h-3.5" /> New Analysis
+          </Button>
+        </div>
       </div>
 
       {/* Projection summary */}
