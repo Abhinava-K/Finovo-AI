@@ -65,8 +65,8 @@ async def agent_chat(req: AgentRequest, request: Request):
     # 1. Enforce IP Rate Limiting (Protects billing quotas)
     await agent_chat_limiter.check_rate_limit(request)
 
-    # 2. Tier 1: Pre-Flight Fiduciary Domain Guardrail Check
-    is_pure_offtopic, is_mixed_trojan, canned_refusal = FinancialDomainGuardrail.check_query_domain(req.query)
+    # 2. Tier 1: Zero-Shot Semantic Domain Guardrail Check (No hardcoded blacklists)
+    is_pure_offtopic, is_mixed_trojan, canned_refusal = await FinancialDomainGuardrail.evaluate_query(req.query)
     if is_pure_offtopic:
         sanitized_refusal = TableSanitizerGuardrail.sanitize_and_extract(canned_refusal or FinancialDomainGuardrail.CANONICAL_REFUSAL)
         return AgentResponse(
@@ -146,8 +146,8 @@ async def agent_chat_stream(req: AgentRequest, request: Request):
     """
     await agent_chat_limiter.check_rate_limit(request)
 
-    # 1. Tier 1: Pre-Flight Fiduciary Domain Guardrail Check
-    is_pure_offtopic, is_mixed_trojan, canned_refusal = FinancialDomainGuardrail.check_query_domain(req.query)
+    # 1. Tier 1: Zero-Shot Semantic Domain Guardrail Check (No hardcoded blacklists)
+    is_pure_offtopic, is_mixed_trojan, canned_refusal = await FinancialDomainGuardrail.evaluate_query(req.query)
     if is_pure_offtopic:
         sanitized_refusal = TableSanitizerGuardrail.sanitize_and_extract(canned_refusal or FinancialDomainGuardrail.CANONICAL_REFUSAL)
         async def refusal_generator() -> AsyncGenerator[str, None]:
