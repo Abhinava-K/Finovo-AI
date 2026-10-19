@@ -1,6 +1,3 @@
-import { toPng } from 'html-to-image'
-import { jsPDF } from 'jspdf'
-
 export interface PDFExportOptions {
   filename?: string
   title?: string
@@ -31,6 +28,7 @@ export async function exportElementToPDF(
   // 2. High-DPI Capture using native browser engine via html-to-image
   let dataUrl: string
   try {
+    const { toPng } = await import('html-to-image')
     dataUrl = await toPng(element, {
       quality: 0.98,
       pixelRatio: 2, // 2x retina clarity
@@ -67,6 +65,7 @@ export async function exportElementToPDF(
   const imgWidth = 210 // A4 width in mm
   const imgHeight = (img.height * imgWidth) / img.width
 
+  const { jsPDF } = await import('jspdf')
   const pdf = new jsPDF('p', 'mm', [imgWidth, Math.max(imgHeight, 297)])
   pdf.addImage(dataUrl, 'PNG', 0, 0, imgWidth, imgHeight, undefined, 'FAST')
 

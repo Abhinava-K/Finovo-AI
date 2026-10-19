@@ -24,7 +24,7 @@ app.include_router(agent_routes.router, prefix="/api/agent", tags=["Agentic Advi
 
 @app.get("/")
 def read_root():
-    return {"message": "FinovoAI Investment Advisor Backend is running!"}
+    return {"message": "FinovoAI Investment Advisor Backend is running! (v2.1)"}
 
 @app.get("/api/health")
 @app.get("/health")

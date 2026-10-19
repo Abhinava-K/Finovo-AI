@@ -6,13 +6,15 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import {
   BrainCircuit, Send, Trash2, Sparkles, TrendingUp, Bitcoin,
-  BarChart3, HelpCircle, Loader2, AlertTriangle, Copy, Check, Download,
+  BarChart3, HelpCircle, Loader2, AlertTriangle, Copy, Check, Download, Upload,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { GlassCard } from '@/components/ui/glass-card'
 import { useAgentChat } from '@/hooks/use-agent-chat'
 import { formatRelativeTime } from '@/lib/formatters'
 import { exportChatTranscript } from '@/lib/capsule-export'
+import { uploadSessionContext } from '@/lib/api/agent'
+
 
 // ─── Suggested prompts ────────────────────────────────────────────────────────
 
@@ -184,10 +186,31 @@ function EmptyState({ onSend }: { onSend: (text: string) => void }) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AdvisorPage() {
-  const { messages, isLoading, error, sendMessage, clearMessages } = useAgentChat()
+  const { messages, sessionContext, setSessionContext, isLoading, error, sendMessage, clearMessages } = useAgentChat()
   const [inputValue, setInputValue] = useState('')
+  const [isUploading, setIsUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+
+  async function handleFileUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setIsUploading(true)
+    setUploadError(null)
+    try {
+      const text = await file.text()
+      const json = JSON.parse(text)
+      const res = await uploadSessionContext(json)
+      setSessionContext(res)
+    } catch (err: any) {
+      setUploadError(err.message || 'Failed to parse session JSON file')
+    } finally {
+      setIsUploading(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
 
   // Auto-scroll disabled per user preference
 
@@ -226,29 +249,83 @@ export default function AdvisorPage() {
           </div>
           <h1 className="text-xl md:text-2xl font-black text-foreground tracking-tight">Investment Intelligence</h1>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Live MFAPI + CoinGecko tools · LangGraph ReAct Reasoning Agent
+            Live MFAPI + CoinGecko tools · Smart Personalization · LangGraph Advisor
           </p>
         </div>
-        {messages.length > 0 && (
-          <div className="flex items-center gap-2 shrink-0">
-            <Button
-              onClick={() => exportChatTranscript(messages)}
-              variant="glass"
-              size="sm"
-              className="gap-2 text-emerald-400 hover:text-emerald-300 border-emerald-500/30 hover:border-emerald-500/50"
-              title="Download conversation transcript as JSON"
-            >
-              <Download className="w-3.5 h-3.5" /> Export Chat (.json)
-            </Button>
-            <Button onClick={clearMessages} variant="glass" size="sm" className="gap-2 shrink-0">
-              <Trash2 className="w-3.5 h-3.5" /> Clear
-            </Button>
-          </div>
-        )}
+        
+        <div className="flex items-center gap-2 shrink-0">
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileUpload}
+            accept=".json"
+            className="hidden"
+          />
+          <Button
+            onClick={() => fileInputRef.current?.click()}
+            variant="glass"
+            size="sm"
+            disabled={isUploading}
+            className="gap-2 text-blue-400 hover:text-blue-300 border-blue-500/30 hover:border-blue-500/50"
+            title="Upload past chat transcript or portfolio capsule JSON to personalize advice"
+          >
+            {isUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+            Upload Session (.json)
+          </Button>
+
+          {messages.length > 0 && (
+            <>
+              <Button
+                onClick={() => exportChatTranscript(messages)}
+                variant="glass"
+                size="sm"
+                className="gap-2 text-emerald-400 hover:text-emerald-300 border-emerald-500/30 hover:border-emerald-500/50"
+                title="Download conversation transcript as JSON"
+              >
+                <Download className="w-3.5 h-3.5" /> Export Chat (.json)
+              </Button>
+              <Button onClick={clearMessages} variant="glass" size="sm" className="gap-2 shrink-0">
+                <Trash2 className="w-3.5 h-3.5" /> Clear
+              </Button>
+            </>
+          )}
+        </div>
       </motion.div>
 
       {/* Chat area */}
       <GlassCard variant="elevated" className="flex-1 flex flex-col overflow-hidden min-h-0 border border-white/[0.08] shadow-2xl relative">
+
+        {/* Personalized Investment Profile Banner */}
+        {sessionContext && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="bg-emerald-500/10 border-b border-emerald-500/20 px-4 py-2.5 flex items-center justify-between text-xs text-emerald-300 shrink-0"
+          >
+            <div className="flex items-center gap-2 overflow-hidden">
+              <Sparkles className="w-4 h-4 text-emerald-400 shrink-0" />
+              <div className="truncate">
+                <strong className="text-white font-medium">Personalized Profile Active:</strong>{' '}
+                ₹{sessionContext.capital.toLocaleString()} Capital · {sessionContext.drift_classification || 'Custom Profile'}
+              </div>
+            </div>
+            <button
+              onClick={() => setSessionContext(null)}
+              className="text-emerald-400/60 hover:text-emerald-200 ml-2 font-bold px-1.5 py-0.5 rounded hover:bg-white/10"
+              title="Remove personalized session context"
+            >
+              ×
+            </button>
+          </motion.div>
+        )}
+        {uploadError && (
+          <div className="bg-red-500/10 border-b border-red-500/20 px-4 py-2 text-xs text-red-300 flex items-center justify-between">
+            <span>{uploadError}</span>
+            <button onClick={() => setUploadError(null)} className="text-red-400 font-bold ml-2">×</button>
+          </div>
+        )}
+
 
         {/* Messages */}
         <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-5 min-h-0 scrollbar-thin">

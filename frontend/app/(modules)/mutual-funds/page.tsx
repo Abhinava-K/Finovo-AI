@@ -1,12 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   TrendingUp, ArrowRight, RotateCcw, Star, RefreshCw, Info,
-  ChevronRight, Layers, BarChart3, Download,
+  ChevronRight, Layers, BarChart3, Download, Upload, Sparkles, ShieldCheck, CheckCircle2,
 } from 'lucide-react'
 import {
   ResponsiveContainer, PieChart, Pie, Cell, Tooltip, AreaChart, Area,
@@ -29,10 +29,18 @@ const CATEGORY_COLOR: Record<string, string> = { equity: '#3B82F6', midcap: '#F5
 
 // ─── Input Form ──────────────────────────────────────────────────────────────
 
-interface FormProps { onSubmit: (v: MFFormValues) => void; isLoading: boolean }
+interface FormProps {
+  onSubmit: (v: MFFormValues) => void
+  isLoading: boolean
+  sessionData: Record<string, any> | null
+  setSessionData: (v: Record<string, any> | null) => void
+  isExecuted: boolean
+  setIsExecuted: (v: boolean) => void
+}
 
-function MFForm({ onSubmit, isLoading }: FormProps) {
-  const { register, handleSubmit, watch, formState: { errors } } = useForm<MFFormValues>({
+function MFForm({ onSubmit, isLoading, sessionData, setSessionData, isExecuted, setIsExecuted }: FormProps) {
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const { register, handleSubmit, watch, setValue, formState: { errors } } = useForm<MFFormValues>({
     resolver: zodResolver(mfSchema),
     defaultValues: { age: 28, amount: 100000, risk: 'high', duration_years: 15 },
   })
@@ -45,18 +53,102 @@ function MFForm({ onSubmit, isLoading }: FormProps) {
     { value: 'high',   label: 'Aggressive',    desc: 'Maximum growth',      color: 'border-blue-500/40 text-blue-400 bg-blue-500/10' },
   ]
 
+  async function handleCapsuleUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    try {
+      const text = await file.text()
+      const json = JSON.parse(text)
+      setSessionData(json)
+      const inputs = json.investor_profile || json.inputs || json
+      if (inputs.amount || inputs.capital || inputs.investment_capital_inr) {
+        setValue('amount', Number(inputs.amount || inputs.capital || inputs.investment_capital_inr))
+      }
+      if (inputs.tenure_years || inputs.duration_years || inputs.horizon_years) {
+        setValue('duration_years', Number(inputs.tenure_years || inputs.duration_years || inputs.horizon_years))
+      }
+      const rawRisk = (inputs.stated_risk_appetite || inputs.risk_appetite || inputs.risk || 'high').toLowerCase()
+      if (['low', 'medium', 'high'].includes(rawRisk)) {
+        setValue('risk', rawRisk as 'low' | 'medium' | 'high')
+      }
+    } catch (err) {
+      console.error('Failed to parse capsule JSON', err)
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
       <GlassCard variant="elevated" glow="blue" shine className="p-6 max-w-2xl mx-auto">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 rounded-2xl bg-blue-500/15 border border-blue-500/20 flex items-center justify-center">
-            <TrendingUp className="w-5 h-5 text-blue-400" />
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-2xl bg-blue-500/15 border border-blue-500/20 flex items-center justify-center">
+              <TrendingUp className="w-5 h-5 text-blue-400" />
+            </div>
+            <div>
+              <h2 className="text-lg font-bold text-foreground">Build Your MF Portfolio</h2>
+              <p className="text-xs text-muted-foreground">Live recommendations from MFAPI · Smart Personalization</p>
+            </div>
           </div>
           <div>
-            <h2 className="text-lg font-bold text-foreground">Build Your MF Portfolio</h2>
-            <p className="text-xs text-muted-foreground">Live recommendations from MFAPI — not templates</p>
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleCapsuleUpload}
+              accept=".json"
+              className="hidden"
+            />
+            <Button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              variant="glass"
+              size="sm"
+              className="gap-1.5 text-xs text-blue-400 hover:text-blue-300 border-blue-500/30 hover:border-blue-500/50"
+              title="Upload previous portfolio capsule to tailor your new investment"
+            >
+              <Upload className="w-3.5 h-3.5" /> Import Past Capsule (.json)
+            </Button>
           </div>
         </div>
+
+        {sessionData && (() => {
+          const prof = sessionData.investor_profile || sessionData.inputs || sessionData
+          const badgeAge = prof.age || 25
+          const badgeCap = Number(prof.investment_capital_inr || prof.capital || prof.amount || 100000)
+          const badgeRisk = String(prof.risk_appetite || prof.stated_risk_appetite || prof.risk || 'High')
+
+          return (
+            <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/25 mb-5 flex flex-col gap-2">
+              <div className="flex items-center justify-between text-xs text-emerald-300">
+                <div className="flex items-center gap-2 overflow-hidden">
+                  <Sparkles className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span className="font-semibold text-white">Past Portfolio Loaded:</span>
+                  <span className="truncate text-slate-300">
+                    Age {badgeAge} · ₹{badgeCap.toLocaleString('en-IN')} Capital · {badgeRisk.charAt(0).toUpperCase() + badgeRisk.slice(1)} Risk
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSessionData(null)}
+                  className="text-emerald-400/80 hover:text-white font-bold px-1.5 py-0.5 rounded hover:bg-white/10"
+                  title="Remove loaded capsule"
+                >
+                  ×
+                </button>
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer text-xs text-slate-300">
+                <input
+                  type="checkbox"
+                  checked={isExecuted}
+                  onChange={(e) => setIsExecuted(e.target.checked)}
+                  className="rounded border-white/20 bg-white/5 text-emerald-500 focus:ring-emerald-500/30"
+                />
+                <span>I already invested in this past portfolio (Tailor my fresh funds to complement past investments)</span>
+              </label>
+            </div>
+          )
+        })()}
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           {/* Age + Amount */}
@@ -150,14 +242,16 @@ function MFResults({ data, request, onReset }: ResultsProps) {
   const { allocation, top_funds, projection, rebalancing_plan } = data
 
   const allocSlices = [
-    { name: 'Equity',  value: allocation.equity,  color: ALLOC_COLORS.equity  },
-    { name: 'Midcap',  value: allocation.midcap,  color: ALLOC_COLORS.midcap  },
-    { name: 'Debt',    value: allocation.debt,    color: ALLOC_COLORS.debt    },
+    { name: 'Equity',  value: allocation?.equity ?? 0,  color: ALLOC_COLORS.equity  },
+    { name: 'Midcap',  value: allocation?.midcap ?? 0,  color: ALLOC_COLORS.midcap  },
+    { name: 'Debt',    value: allocation?.debt ?? 0,    color: ALLOC_COLORS.debt    },
   ].filter(s => s.value > 0)
 
-  const projData = interpolateProjection(request.amount, projection, request.duration_years)
+  const projData = projection
+    ? interpolateProjection(request.amount, projection, request.duration_years)
+    : []
 
-  const totalRebPhases = rebalancing_plan.length
+  const totalRebPhases = rebalancing_plan?.length ?? 0
 
   const [reportMeta] = useState(() => {
     const now = new Date()
@@ -242,6 +336,85 @@ function MFResults({ data, request, onReset }: ResultsProps) {
           </div>
         </div>
 
+        {/* Personalized Investment Strategy Card */}
+        {data.marginal_context && (
+          <div className="p-5 rounded-2xl bg-gradient-to-r from-emerald-500/10 via-teal-500/10 to-blue-500/10 border border-emerald-500/30 shadow-lg space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-5 h-5 text-emerald-400" />
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
+                  {data.marginal_context?.summary?.is_executed
+                    ? 'Tailored Portfolio Strategy Active'
+                    : 'Personalized Profile Active'}
+                </h3>
+              </div>
+              <div className="text-[11px] px-2.5 py-1 rounded-full bg-emerald-500/20 text-emerald-300 font-semibold border border-emerald-500/40 w-fit">
+                {data.marginal_context?.summary?.is_executed ? 'Tailored to Past Holdings' : 'Goal-Aligned Plan'}
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              {data.marginal_context?.summary?.is_executed ? (
+                <>
+                  <strong>Personalized Growth Strategy:</strong> Based on your previous investments from{' '}
+                  <strong className="text-white">Age {data.marginal_context?.summary?.past_investment_age || 28}</strong>, your stable Large-Cap foundation is already established. For your new{' '}
+                  <strong className="text-emerald-300">₹{Number(data.marginal_context?.summary?.fresh_capital_deployed || request.amount).toLocaleString()}</strong> investment, we&apos;ve allocated more into Mid-Cap funds to capture higher returns while maintaining a steady risk balance for your current Age {request.age}. Your past investments continue running independently and are not added to this capital.
+                </>
+              ) : (
+                <>
+                  <strong>Personalized Allocation:</strong> Considering your previous investment goals from{' '}
+                  <strong className="text-white">Age {data.marginal_context?.summary?.past_investment_age || 28}</strong>, 100% of your fresh{' '}
+                  <strong className="text-emerald-300">₹{Number(data.marginal_context?.summary?.fresh_capital_deployed || request.amount).toLocaleString()}</strong> is deployed directly into an optimal growth mix tailored for your current age and goals.
+                </>
+              )}
+            </p>
+
+            <div className="grid sm:grid-cols-2 gap-3 text-xs">
+              <div className="p-3.5 rounded-xl bg-black/40 border border-white/10">
+                <p className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider mb-2">
+                  Fresh ₹{(request.amount / 1000).toFixed(0)}K Investment Breakdown
+                </p>
+                <div className="space-y-1.5">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Large-Cap (Core Stability):</span>
+                    <span className="font-semibold text-white">{data.allocation.equity}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Mid-Cap (Higher Growth):</span>
+                    <span className="font-semibold text-emerald-300">{data.allocation.midcap}%</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Debt & Liquid (Safety Buffer):</span>
+                    <span className="font-semibold text-white">{data.allocation.debt}%</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-3.5 rounded-xl bg-black/40 border border-white/10">
+                <p className="text-[11px] font-bold text-sky-400 uppercase tracking-wider mb-2">
+                  Why This Allocation?
+                </p>
+                <div className="space-y-1.5">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Past Reference:</span>
+                    <span className="font-semibold text-white">Age {data.marginal_context?.summary?.past_investment_age || 28} Portfolio</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Strategy:</span>
+                    <span className="font-semibold text-sky-300">
+                      {data.marginal_context?.summary?.is_executed ? 'Higher Growth Tilt' : 'Standard Equilibrium'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Investment Scope:</span>
+                    <span className="font-semibold text-white">Fresh Capital Only</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Allocation + Projection summary */}
         <div className="grid sm:grid-cols-3 gap-4">
         {[
@@ -313,7 +486,7 @@ function MFResults({ data, request, onReset }: ResultsProps) {
             <span className="ml-auto text-[10px] text-muted-foreground">Live CAGR from MFAPI</span>
           </div>
           <div className="space-y-3">
-            {top_funds.map((fund, i) => (
+            {(top_funds ?? []).map((fund, i) => (
               <div key={fund.name} className="flex items-center justify-between gap-3 p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.05] min-h-[60px]">
                 <div className="flex items-center gap-3.5 min-w-0 flex-1">
                   <div className="w-8 h-8 rounded-lg flex items-center justify-center border shrink-0" style={{ backgroundColor: (CATEGORY_COLOR[fund.category] || '#3B82F6') + '18', borderColor: (CATEGORY_COLOR[fund.category] || '#3B82F6') + '40' }}>
@@ -383,7 +556,7 @@ function MFResults({ data, request, onReset }: ResultsProps) {
       </GlassCard>
 
       {/* Rebalancing plan */}
-      {rebalancing_plan.length > 0 && (
+      {(rebalancing_plan ?? []).length > 0 && (
         <GlassCard variant="subtle" className="p-6">
           <div className="flex items-center gap-2 mb-5">
             <RefreshCw className="w-4 h-4 text-violet-400" />
@@ -391,7 +564,7 @@ function MFResults({ data, request, onReset }: ResultsProps) {
             <span className="ml-auto text-[10px] text-muted-foreground">{totalRebPhases} phases</span>
           </div>
           <div className="space-y-3">
-            {rebalancing_plan.map((phase, i) => (
+            {(rebalancing_plan ?? []).map((phase, i) => (
               <div key={i} className="flex items-center gap-4 p-3.5 rounded-xl bg-white/[0.03] border border-white/[0.05]">
                 <div className="w-8 h-8 rounded-lg bg-violet-400/10 border border-violet-400/20 flex items-center justify-center shrink-0">
                   <span className="text-xs font-bold font-mono text-violet-400 leading-none">{i + 1}</span>
@@ -468,11 +641,17 @@ function ErrorState({ error, onRetry }: { error: Error; onRetry: () => void }) {
 
 export default function MutualFundsPage() {
   const [lastRequest, setLastRequest] = useState<MFFormValues | null>(null)
+  const [sessionData, setSessionData] = useState<Record<string, any> | null>(null)
+  const [isExecuted, setIsExecuted] = useState<boolean>(true)
   const { mutate, data, isPending, error, reset } = useMFRecommend()
 
   function handleSubmit(values: MFFormValues) {
     setLastRequest(values)
-    mutate(values)
+    mutate({
+      ...values,
+      session_data: sessionData || undefined,
+      is_executed: isExecuted,
+    })
   }
 
   function handleReset() {
@@ -509,10 +688,18 @@ export default function MutualFundsPage() {
           </motion.div>
         ) : (
           <motion.div key="form" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-            <MFForm onSubmit={handleSubmit} isLoading={isPending} />
+            <MFForm
+              onSubmit={handleSubmit}
+              isLoading={isPending}
+              sessionData={sessionData}
+              setSessionData={setSessionData}
+              isExecuted={isExecuted}
+              setIsExecuted={setIsExecuted}
+            />
           </motion.div>
         )}
       </AnimatePresence>
     </div>
   )
 }
+

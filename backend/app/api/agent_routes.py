@@ -11,6 +11,8 @@ from app.core.guardrails import FinancialDomainGuardrail
 from app.core.rate_limiter import agent_chat_limiter
 from app.core.llm_cache import LLMQueryResponseCache
 from app.core.circuit_breaker import mfapi_breaker, coingecko_breaker, news_breaker
+from app.services.session_parser import SessionParserService
+from app.services.azure_ml_service import AzureMLPersonalizationService
 
 router = APIRouter()
 
@@ -21,6 +23,8 @@ class ChatMessagePayload(BaseModel):
 class AgentRequest(BaseModel):
     query: str = Field(..., description="Current user query")
     history: Optional[List[ChatMessagePayload]] = Field(default=None, description="Previous conversation message turns for multi-turn context")
+    session_context: Optional[Dict[str, Any]] = Field(default=None, description="Uploaded previous conversation or portfolio capsule context")
+
 
 class AgentResponse(BaseModel):
     reply: str
@@ -51,6 +55,35 @@ async def get_circuit_status():
             news_breaker.get_status()
         ]
     }
+
+@router.post("/upload-session")
+async def upload_session_context(payload: Dict[str, Any], request: Request):
+    """
+    Parses an uploaded chat transcript or portfolio capsule and runs Deep Learning sequence evaluation.
+    Returns the extracted financial profile and adaptive parameters to seed the conversational agent.
+    """
+    await agent_chat_limiter.check_rate_limit(request)
+    try:
+        parsed = SessionParserService.parse_session_file(json.dumps(payload))
+        vector = SessionParserService.vectorize_features(parsed, {})
+        ml_score = await AzureMLPersonalizationService.score_session(vector, {
+            "source_type": parsed.get("source_type"),
+            "timestamp": parsed.get("timestamp")
+        })
+        return {
+            "status": "success",
+            "summary": parsed.get("summary"),
+            "capital": parsed.get("capital"),
+            "risk_profile": parsed.get("risk_profile"),
+            "adaptive_gamma": ml_score.get("adaptive_gamma"),
+            "risk_drift_index": ml_score.get("risk_drift_index"),
+            "drift_classification": ml_score.get("drift_classification"),
+            "previous_allocations": parsed.get("previous_allocations"),
+            "rebalance_recommendations": ml_score.get("rebalance_recommendations"),
+            "source": ml_score.get("source")
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Failed to parse session JSON: {str(e)}")
 
 @router.post("/chat", response_model=AgentResponse)
 async def agent_chat(req: AgentRequest, request: Request):
@@ -94,6 +127,17 @@ async def agent_chat(req: AgentRequest, request: Request):
     try:
         # Build multi-turn messages context
         messages = []
+        if req.session_context:
+            pers_directive = (
+                f"[DEEP LEARNING USER PROFILE LOADED: "
+                f"Historical Capital: ₹{req.session_context.get('capital', 'N/A')}, "
+                f"Risk Drift: {req.session_context.get('drift_classification', 'Consistent')}, "
+                f"Adaptive Risk Gamma: {req.session_context.get('adaptive_gamma', 'N/A')}, "
+                f"Previous Allocations: {req.session_context.get('previous_allocations', {})}. "
+                f"Contextualize your financial advice around these revealed personal parameters.]"
+            )
+            messages.append(("ai", pers_directive))
+
         if req.history:
             for msg in req.history:
                 role = "human" if msg.role.lower() in ["user", "human"] else "ai"
@@ -165,10 +209,22 @@ async def agent_chat_stream(req: AgentRequest, request: Request):
             return
 
         messages = []
+        if req.session_context:
+            pers_directive = (
+                f"[DEEP LEARNING USER PROFILE LOADED: "
+                f"Historical Capital: ₹{req.session_context.get('capital', 'N/A')}, "
+                f"Risk Drift: {req.session_context.get('drift_classification', 'Consistent')}, "
+                f"Adaptive Risk Gamma: {req.session_context.get('adaptive_gamma', 'N/A')}, "
+                f"Previous Allocations: {req.session_context.get('previous_allocations', {})}. "
+                f"Contextualize your financial advice around these revealed personal parameters.]"
+            )
+            messages.append(("ai", pers_directive))
+
         if req.history:
             for msg in req.history:
                 role = "human" if msg.role.lower() in ["user", "human"] else "ai"
                 messages.append((role, msg.content))
+
 
         # Append current user turn with Trojan steering if mixed query
         if is_mixed_trojan:

@@ -1,0 +1,12 @@
+name: finovo-ml-env
+channels:
+  - conda-forge
+  - pytorch
+dependencies:
+  - python=3.10
+  - pip
+  - pip:
+      - azureml-defaults
+      - inference-schema
+      - torch>=2.0.0
+      - numpy>=1.24.0

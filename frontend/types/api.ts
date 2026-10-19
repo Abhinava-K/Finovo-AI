@@ -76,6 +76,8 @@ export interface MFRecommendRequest {
   amount: number         // float, >= 1000, multiple of 100
   risk: 'low' | 'medium' | 'high'
   duration_years: number // integer, strictly > 0
+  session_data?: Record<string, any>
+  is_executed?: boolean
 }
 
 export interface MFAllocation {
@@ -104,12 +106,60 @@ export interface RebalancingPhase {
   debt: number
 }
 
+export interface MarginalContext {
+  is_personalized: boolean
+  summary: {
+    investor_current_age: number
+    past_investment_age: number
+    elapsed_years: number
+    fresh_capital_deployed: number
+    past_capital_initial: number
+    past_capital_current_estimated: number
+    total_consolidated_net_worth: number
+    risk_profile: string
+    duration_years: number
+    is_executed: boolean
+    marginal_expected_cagr: number
+  }
+  consolidated_allocation: {
+    equity_largecap: number
+    equity_midcap: number
+    equity_total: number
+    debt_and_liquid: number
+    gold_commodities: number
+    crypto_assets: number
+    total_rupees_largecap: number
+    total_rupees_midcap: number
+    total_rupees_debt: number
+    total_rupees_gold: number
+    total_rupees_crypto: number
+  }
+  target_lifecycle_equilibrium: {
+    equity_largecap: number
+    equity_midcap: number
+    equity_total: number
+    debt_and_liquid: number
+    gold_commodities: number
+    crypto_assets: number
+  }
+  rebalance_alerts?: Array<{
+    asset: string
+    action: string
+    excess_rupees: number
+    reason: string
+  }>
+  adaptive_gamma?: number
+  risk_drift_index?: number
+  drift_classification?: string
+}
+
 /** Received from POST /api/mf/recommend */
 export interface MFRecommendResponse {
   allocation: MFAllocation
   top_funds: TopFund[]
   projection: MFProjection
   rebalancing_plan: RebalancingPhase[]
+  marginal_context?: MarginalContext
 }
 
 // ─── Crypto Module ───────────────────────────────────────────────────────────
@@ -155,6 +205,7 @@ export interface HistoryTurn {
 export interface AgentChatRequest {
   query: string
   history?: HistoryTurn[]
+  session_context?: Record<string, any>
 }
 
 /** Received from POST /api/agent/chat */
@@ -165,6 +216,34 @@ export interface AgentChatResponse {
   disclaimer_verified?: boolean
   latency_ms?: number
 }
+
+export interface SessionContextUploadResponse {
+  status: string
+  summary: string
+  capital: number
+  risk_profile: string
+  adaptive_gamma: number
+  risk_drift_index: number
+  drift_classification: string
+  previous_allocations: Record<string, number>
+  rebalance_recommendations?: Array<{
+    asset: string
+    action: string
+    target_pct: number
+    reason: string
+  }>
+  source: string
+}
+
+export interface PersonalizePortfolioRequest {
+  age?: number
+  capital?: number
+  risk?: 'low' | 'medium' | 'high'
+  duration_years?: number
+  inflation_pct?: number
+  session_data?: Record<string, any>
+}
+
 
 // ─── API Error Types ─────────────────────────────────────────────────────────
 

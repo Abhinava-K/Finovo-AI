@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react'
 import { chatWithAgent } from '@/lib/api/agent'
-import type { ChatMessage, HistoryTurn } from '@/types/api'
+import type { ChatMessage, HistoryTurn, SessionContextUploadResponse } from '@/types/api'
 
 function generateId(): string {
   return `msg_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`
@@ -10,6 +10,7 @@ function generateId(): string {
 
 export function useAgentChat() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
+  const [sessionContext, setSessionContext] = useState<SessionContextUploadResponse | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -44,7 +45,8 @@ export function useAgentChat() {
     try {
       const response = await chatWithAgent({
         query: query.trim(),
-        history: historyPayload.length > 0 ? historyPayload : undefined
+        history: historyPayload.length > 0 ? historyPayload : undefined,
+        session_context: sessionContext || undefined
       })
 
       setMessages((prev) =>
@@ -62,12 +64,20 @@ export function useAgentChat() {
     } finally {
       setIsLoading(false)
     }
-  }, [messages, isLoading])
+  }, [messages, isLoading, sessionContext])
 
   const clearMessages = useCallback(() => {
     setMessages([])
     setError(null)
   }, [])
 
-  return { messages, isLoading, error, sendMessage, clearMessages }
+  return { 
+    messages, 
+    sessionContext, 
+    setSessionContext, 
+    isLoading, 
+    error, 
+    sendMessage, 
+    clearMessages 
+  }
 }

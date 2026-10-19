@@ -1,0 +1,7 @@
+$schema: https://azuremlschemas.azureedge.net/latest/managedOnlineEndpoint.schema.json
+name: finovo-personalization-endpoint
+auth_mode: key
+description: "FinovoAI Zero-Knowledge Deep Learning Personalization Managed Online Endpoint"
+tags:
+  project: finovo-ai
+  environment: production

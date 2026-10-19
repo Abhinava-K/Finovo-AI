@@ -1,7 +1,11 @@
 from fastapi import APIRouter
 from pydantic import BaseModel, Field, field_validator, model_validator
 from typing import Optional, Any, Dict
+import json
 from app.core.mf_engine import calculate_allocation, calculate_projections
+from app.core.portfolio_engine import UnifiedPortfolioEngine
+from app.services.session_parser import SessionParserService
+from app.models.temporal_portfolio_encoder import TemporalPortfolioSequenceEncoder
 
 router = APIRouter()
 
@@ -11,6 +15,8 @@ class MFRequest(BaseModel):
     capital: Optional[float] = Field(default=None, description="Alias for investment amount")
     risk: str = Field(..., description="Risk Profile: low, medium, or high")
     duration_years: int = Field(..., gt=0, description="Investment duration in years")
+    session_data: Optional[Dict[str, Any]] = Field(default=None, description="Uploaded past portfolio capsule")
+    is_executed: Optional[bool] = Field(default=True, description="Whether past capsule was executed")
 
     @model_validator(mode='before')
     @classmethod
@@ -44,8 +50,75 @@ class MFRequest(BaseModel):
 
 @router.post("/recommend")
 async def recommend_mf(req: MFRequest):
+    # Base allocation
     alloc = calculate_allocation(req.age, req.risk.lower(), req.duration_years)
-    
+    marginal_context = None
+
+    # Marginal allocation if past capsule is provided
+    if req.session_data:
+        try:
+            parsed_history = SessionParserService.parse_session_file(json.dumps(req.session_data))
+            feature_vec = SessionParserService.vectorize_features(parsed_history, {
+                "age": req.age,
+                "capital": req.amount,
+                "risk": req.risk.lower(),
+                "duration_years": req.duration_years,
+                "is_executed": req.is_executed
+            })
+            dl_res = TemporalPortfolioSequenceEncoder.forward_pass(feature_vec)
+            
+            marginal_res = UnifiedPortfolioEngine.calculate_marginal_allocation(
+                current_age=req.age,
+                fresh_capital=req.amount,
+                risk=req.risk.lower(),
+                duration_years=req.duration_years,
+                past_session_profile=parsed_history,
+                adaptive_gamma=dl_res.get("adaptive_gamma"),
+                is_executed=req.is_executed,
+                personalization_meta={
+                    "session_summary": parsed_history.get("summary"),
+                    "detected_past_capital": parsed_history.get("capital"),
+                    "detected_past_risk": parsed_history.get("risk_profile"),
+                    "neural_scoring": dl_res
+                }
+            )
+
+            # Map the marginal allocation into the mutual fund categories (Equity Large, Mid-cap, Debt)
+            m_matrix = marginal_res["marginal_allocation"]
+            mf_raw_large = m_matrix["equity_largecap"]
+            mf_raw_mid = m_matrix["equity_midcap"]
+            mf_raw_debt = m_matrix["debt_and_liquid"]
+            mf_total = mf_raw_large + mf_raw_mid + mf_raw_debt
+
+            if mf_total > 0:
+                alloc["allocation"]["equity"] = round((mf_raw_large / mf_total) * 100.0, 1)
+                alloc["allocation"]["midcap"] = round((mf_raw_mid / mf_total) * 100.0, 1)
+                alloc["allocation"]["debt"] = round((mf_raw_debt / mf_total) * 100.0, 1)
+                
+                # Strict 100% sum verification
+                mf_check = round(alloc["allocation"]["equity"] + alloc["allocation"]["midcap"] + alloc["allocation"]["debt"], 1)
+                mf_diff = round(100.0 - mf_check, 1)
+                if mf_diff != 0.0:
+                    max_mf_cat = max(alloc["allocation"], key=alloc["allocation"].get)
+                    alloc["allocation"][max_mf_cat] = round(alloc["allocation"][max_mf_cat] + mf_diff, 1)
+
+            marginal_context = {
+                "is_personalized": True,
+                "summary": marginal_res["summary"],
+                "elapsed_years": marginal_res["summary"]["elapsed_years"],
+                "past_compounded_value": marginal_res["summary"]["past_capital_current_estimated"],
+                "consolidated_allocation": marginal_res["consolidated_allocation"],
+                "target_lifecycle_equilibrium": marginal_res["target_lifecycle_equilibrium"],
+                "rebalance_alerts": marginal_res.get("rebalance_alerts", []),
+                "adaptive_gamma": dl_res.get("adaptive_gamma"),
+                "risk_drift_index": dl_res.get("risk_drift_index"),
+                "drift_classification": dl_res.get("drift_classification")
+            }
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            pass
+
     # Database of representative funds
     fund_db = {
         "equity": [
@@ -105,9 +178,13 @@ async def recommend_mf(req: MFRequest):
                 
     proj = calculate_projections(req.amount, avg_cagr, req.duration_years)
     
-    return {
+    response = {
         "allocation": alloc["allocation"],
         "top_funds": top_funds,
         "projection": proj,
         "rebalancing_plan": alloc["rebalancing_plan"]
     }
+    if marginal_context:
+        response["marginal_context"] = marginal_context
+
+    return response
